@@ -1,0 +1,23 @@
+name: validate
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Scaffold a memex and validate its structure
+        run: |
+          bun bin/memex.ts init /tmp/m
+          test -f /tmp/m/.gitignore   # shipped `gitignore` was renamed
+          cd /tmp/m && bun scripts/validate.ts
+
+      - name: Secret scan (whole repo)
+        run: |
+          if grep -rnE 'sk-[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{40,}|AIza[0-9A-Za-z_-]{35}|-----BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY-----' \
+               --include='*.md' --include='*.ts' --include='*.json' --include='*.sh' . ; then
+            echo "::error::possible secret detected"; exit 1
+          fi
+          echo "no secrets found"

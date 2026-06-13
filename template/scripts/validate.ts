@@ -1,31 +1,45 @@
 #!/usr/bin/env bun
 /**
- * smBrain invariants gate — the guard that keeps the structure from drifting.
- * Run on demand (`bun scripts/validate.ts`) and by a scheduled check. Exits non-zero
- * on any ERROR; warnings (⚠) are nudges, not failures.
+ * memex invariants gate — the guard that keeps the structure from drifting.
+ * Run on demand (`bun scripts/validate.ts`) and on a schedule. Exits non-zero on any
+ * ERROR; warnings (⚠) are nudges, not failures.
  *
  * Checks:
- *   (a) smBrain is text-only — no binaries (they belong in smStorage via `storage:`)
- *   (b) every `storage:` reference resolves under ~/smStorage/smBrain/
+ *   (a) text-only — no binaries (they belong in the asset store via `storage:`)
+ *   (b) every `storage:` reference resolves in the asset store
  *   (c) every self/ + wiki/ note appears in MAP.md
- *   (d) no dangling [[wikilinks]]
+ *   (d) no dangling [[wikilinks]]; (d2) chats well-formed + bidirectional; (d3) conversations don't bleed
+ *   (d4) client registry valid; (d5) config spine present; (d6) NO LLM calls in scripts; (d7) NO secrets
  *   (e) wiki/ notes carry frontmatter (summary/tags/updated)
- *   (+) orphan smStorage/smBrain assets that no note references (warning)
+ *   (+) orphan assets that no note references (warning)
+ *
+ * Asset store (the `storage:` root) resolves from: $MEMEX_ASSETS → memex.local.json "assetsPath"
+ * → sibling `../<dir>-assets`. memex is text-only; binaries live there. See ASSETS.md.
  */
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, extname, relative, basename } from "node:path";
 import { homedir } from "node:os";
 
 const BRAIN = join(import.meta.dir, "..");
-const STORAGE = join(homedir(), "smStorage", "smBrain");
+const expand = (p: string) => (p.startsWith("~") ? join(homedir(), p.slice(1)) : p);
+function assetsRoot(): string {
+  if (process.env.MEMEX_ASSETS) return expand(process.env.MEMEX_ASSETS);
+  try {
+    const c = JSON.parse(readFileSync(join(BRAIN, "memex.local.json"), "utf8"));
+    if (c.assetsPath) return expand(c.assetsPath);
+  } catch { /* fall through */ }
+  return join(BRAIN, "..", `${basename(BRAIN)}-assets`);
+}
+const STORAGE = assetsRoot();
 
 const BINARY_EXT = new Set([
   ".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic", ".svg", ".ico",
   ".mp3", ".m4a", ".wav", ".aac", ".mp4", ".mov", ".webm",
-  ".pdf", ".zip", ".tar", ".gz", ".bundle", ".icns", ".key", ".sqlite", ".db",
+  ".pdf", ".zip", ".tar", ".gz", ".bundle", ".icns", ".sqlite", ".db",
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {
+  if (!existsSync(dir)) return out;
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (e.name === ".git" || e.name === "node_modules" || e.name === ".DS_Store") continue;
     const p = join(dir, e.name);
@@ -39,8 +53,7 @@ const errors: string[] = [];
 const warnings: string[] = [];
 const rel = (f: string) => relative(BRAIN, f);
 const read = (f: string) => readFileSync(f, "utf8");
-// Strip fenced + inline code so illustrative examples in docs/templates aren't
-// mistaken for real refs/links.
+// Strip fenced + inline code so illustrative examples in docs/templates aren't mistaken for real refs.
 const prose = (t: string) => t.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "");
 const isTemplate = (f: string) => rel(f).includes("/_templates/");
 
@@ -50,7 +63,7 @@ const notes = all.filter((f) => f.endsWith(".md"));
 // (a) text-only
 for (const f of all) {
   if (BINARY_EXT.has(extname(f).toLowerCase())) {
-    errors.push(`binary in smBrain: ${rel(f)} — move to smStorage and reference with storage:`);
+    errors.push(`binary in the memex: ${rel(f)} — move it to the asset store and reference with storage:`);
   }
 }
 
@@ -77,8 +90,7 @@ const indexable = notes.filter((f) => {
 const mapPath = join(BRAIN, "MAP.md");
 const MAP = existsSync(mapPath) ? read(mapPath) : "";
 for (const f of indexable) {
-  const name = basename(f, ".md");
-  if (!MAP.includes(name)) warnings.push(`not in MAP.md: ${rel(f)}`);
+  if (!MAP.includes(basename(f, ".md"))) warnings.push(`not in MAP.md: ${rel(f)}`);
 }
 
 // (d) dangling [[links]]
@@ -86,14 +98,14 @@ const noteBasenames = new Set(notes.map((f) => basename(f, ".md")));
 const noteRelNoExt = notes.map((f) => rel(f).replace(/\.md$/, ""));
 const linkResolves = (t: string) => noteBasenames.has(basename(t)) || noteRelNoExt.some((r) => r.endsWith(t));
 for (const f of notes) {
-  if (isTemplate(f)) continue; // templates contain placeholder links by design
+  if (isTemplate(f)) continue;
   for (const m of prose(read(f)).matchAll(/\[\[([^\]]+)\]\]/g)) {
     const target = m[1].split("|")[0].split("#")[0].trim();
     if (!linkResolves(target)) warnings.push(`dangling [[${target}]] in ${rel(f)}`);
   }
 }
 
-// (d2) chats/ — named conversations: frontmatter (title + source), attachedTo resolves, in MAP
+// (d2) chats/ — frontmatter (title + source), attachedTo resolves + is bidirectional, in MAP
 const chats = notes.filter((f) => rel(f).startsWith("chats/") && basename(f).toLowerCase() !== "readme.md");
 for (const f of chats) {
   const head = read(f).slice(0, 600);
@@ -105,7 +117,6 @@ for (const f of chats) {
     const targetName = at[1].split("|")[0].trim();
     if (!linkResolves(targetName)) warnings.push(`chat attachedTo dangling [[${targetName}]]: ${rel(f)}`);
     else {
-      // reach is bidirectional: the attached note must link back to the chat
       const slug = basename(f, ".md");
       const noteFile = notes.find((n) => basename(n, ".md") === basename(targetName) || rel(n).replace(/\.md$/, "").endsWith(targetName));
       if (noteFile && !read(noteFile).includes(`[[${slug}]]`)) {
@@ -116,15 +127,15 @@ for (const f of chats) {
   if (!MAP.includes(basename(f, ".md"))) warnings.push(`not in MAP.md: ${rel(f)}`);
 }
 
-// (d3) non-bleed: each surface stays in its lane (conversations don't co-mingle)
+// (d3) non-bleed: each conversation surface stays in its lane
 for (const f of notes) {
   const r = rel(f);
   if (r.startsWith("history/") && basename(f).toLowerCase() !== "readme.md" && !/\d{4}-\d{2}-\d{2}\.md$/.test(f)) {
-    warnings.push(`non-bleed: ${r} isn't a daily — history/ is the message-platform stream (YYYY-MM-DD.md); named chats go in chats/`);
+    warnings.push(`non-bleed: ${r} isn't a daily — history/ is the by-day stream (YYYY-MM-DD.md); named chats go in chats/`);
   }
 }
 
-// (d4) client layer registry is well-formed (load-bearing — a break = error)
+// (d4) client registry well-formed (load-bearing)
 const reg = join(BRAIN, "clients", "models.json");
 if (existsSync(reg)) {
   try {
@@ -135,42 +146,45 @@ if (existsSync(reg)) {
   }
 }
 
-// (d5) config governance (the Configuration Rule's spine is load-bearing)
-if (!existsSync(join(BRAIN, "STRUCTURE.md"))) errors.push("STRUCTURE.md missing — the layout contract tools resolve against");
+// (d5) config spine present (the Configuration Rule)
+if (!existsSync(join(BRAIN, "STRUCTURE.md"))) errors.push("STRUCTURE.md missing — the layout contract");
 const configDoc = join(BRAIN, "CONFIG.md");
-if (!existsSync(configDoc)) {
-  errors.push("CONFIG.md missing — the Configuration Rule + knob index");
-} else {
-  const c = read(configDoc);
-  // rule #6: every knob is indexed. (smBrain-local check; tool knobs live in their own repos.)
-  if (existsSync(reg) && !c.includes("models.json")) warnings.push("CONFIG.md doesn't index clients/models.json (Configuration Rule #6: index every knob)");
+if (!existsSync(configDoc)) errors.push("CONFIG.md missing — the Configuration Rule + knob index");
+else if (existsSync(reg) && !read(configDoc).includes("models.json")) {
+  warnings.push("CONFIG.md doesn't index clients/models.json (Configuration Rule #6: index every knob)");
 }
 
-// (d6) the brain makes NO LLM calls — only config for how an LLM talks to it (Configuration Rule #9)
+// (d6) the memex makes NO LLM calls — only config for how a model talks to it (Rule #9)
 const LLM_CALL = /localhost:11434|api\.(anthropic|openai)\.com|generativelanguage\.googleapis|["']\s*-p\s*["']/;
 for (const f of all.filter((f) => f.endsWith(".ts") && rel(f).startsWith("scripts/") && basename(f) !== "validate.ts")) {
   if (LLM_CALL.test(read(f))) {
-    errors.push(`LLM/model call in a brain script (${rel(f)}) — the brain holds NO LLM calls, only config for how a model talks to it (CONFIG.md Rule #9)`);
+    errors.push(`LLM/model call in a memex script (${rel(f)}) — the memex makes NO LLM calls (CONFIG.md Rule #9)`);
+  }
+}
+
+// (d7) NO secrets in the memex — they belong in your OS keychain, never in files (security)
+const SECRET = /sk-[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{40,}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[a-zA-Z0-9-]{10,}|-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----/;
+for (const f of all.filter((f) => /\.(md|ts|json|sh|txt|ya?ml|env)$/.test(f) && basename(f) !== "validate.ts")) {
+  if (SECRET.test(read(f))) {
+    errors.push(`possible secret committed in ${rel(f)} — secrets belong in your OS keychain / a gitignored *.local file, NEVER in the memex`);
   }
 }
 
 // (e) frontmatter on wiki/ notes
 for (const f of indexable.filter((f) => rel(f).startsWith("wiki/"))) {
   const head = read(f).slice(0, 400);
-  if (!head.startsWith("---") || !/\nsummary:/.test(head)) {
-    warnings.push(`missing frontmatter summary: ${rel(f)}`);
-  }
+  if (!head.startsWith("---") || !/\nsummary:/.test(head)) warnings.push(`missing frontmatter summary: ${rel(f)}`);
 }
 
 // (+) orphan assets
 if (existsSync(STORAGE)) {
   for (const a of walk(STORAGE)) {
     const r = relative(STORAGE, a);
-    if (!referenced.has(r)) warnings.push(`orphan asset (no note references it): smStorage/smBrain/${r}`);
+    if (!referenced.has(r)) warnings.push(`orphan asset (no note references it): ${r}`);
   }
 }
 
-console.log(`smBrain validate — ${notes.length} notes / ${all.length} files`);
+console.log(`memex validate — ${notes.length} notes / ${all.length} files · assets: ${STORAGE.replace(homedir(), "~")}`);
 for (const w of warnings) console.log(`  ⚠ ${w}`);
 for (const e of errors) console.log(`  ✗ ${e}`);
 if (errors.length) {

@@ -42,7 +42,7 @@ const summaryOf = (file: string): string => frontmatterSummary(file) || prev[bas
 const line = (file: string, indent = "") => `${indent}- [[${basename(file, ".md")}]] — ${summaryOf(file)}`;
 
 const out: string[] = [
-  "# MAP — the smBrain index",
+  "# MAP — the index",
   "",
   "The spine of the knowledge base: every note with a one-line summary so an LLM can decide what to",
   "open without reading everything. Regenerated deterministically by `scripts/organize.ts` (no LLM).",

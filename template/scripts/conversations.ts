@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * The shared conversation layer for smBrain — the one place both a MESSAGE PLATFORM
+ * The shared conversation layer — the one place both a MESSAGE PLATFORM
  * (a message platform) and a CHAT SYSTEM (a chat system) read and write, so they:
  *   • work with both           — one library, two surfaces
  *   • reach into each other     — uniform READ helpers span both surfaces + shared notes
@@ -13,7 +13,7 @@
  *                                 daily-log), /brain promotes durable facts into self/ + wiki/,
  *                                 and organize.ts indexes everything in MAP.md.
  *
- * Both tools import this from smBrain (the shared ground): resolve knowledgePath, then
+ * Both tools import this from the memex (the shared ground): resolve knowledgePath, then
  * `import(join(knowledgePath(), "scripts", "conversations.ts"))`. BRAIN is derived from this
  * file's own location, so paths are correct no matter who imports it.
  */

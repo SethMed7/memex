@@ -1,0 +1,4 @@
+{
+  "assetsPath": "../mybrain-assets",
+  "_notes": "Local instance wiring — copy to memex.local.json (gitignored). assetsPath = where binaries referenced by `storage:` live (a sibling folder, an absolute path, an object-store mount, …). If absent, tools default to a sibling `../<dir>-assets`, or you can set the MEMEX_ASSETS env var. Real secrets go in your OS keychain, NEVER in any file here."
+}

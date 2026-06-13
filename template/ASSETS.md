@@ -12,9 +12,10 @@ Reference a binary with a logical `storage:` path:
 [The deck](storage:exports/deck.pdf)
 ```
 
-Tools resolve `storage:` → your asset store root (configure it as `assetsPath`; e.g. a sibling
-`…-assets/` folder, an object bucket, or any directory). So `storage:wiki/projects/my-project/diagram.png`
-is the file at `<assetsPath>/wiki/projects/my-project/diagram.png`.
+Tools resolve `storage:` → your asset store root. Set it in `memex.local.json` (`"assetsPath": …`)
+or the `MEMEX_ASSETS` env var; if neither is set, tools default to a sibling `../<dir>-assets`. It can
+be any directory — a sibling folder, an absolute path, an object-store mount. So
+`storage:wiki/projects/my-project/diagram.png` is the file at `<assetsPath>/wiki/projects/my-project/diagram.png`.
 
 **Mirror the note's location** — a binary attached to `wiki/projects/my-project.md` belongs under
 `storage:wiki/projects/my-project/…`, so things stay findable and orphans are detectable.

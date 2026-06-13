@@ -8,7 +8,7 @@
 Plain markdown you own — no cloud, no database, no lock-in. Bring your own model; memex is the
 structure and the rules for how a model talks to it.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-d9a868)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-cd7f5a)](LICENSE)
 [![Local-first](https://img.shields.io/badge/local--first-text%20only-161616)](#principles)
 [![Runtime](https://img.shields.io/badge/Bun-zero%20deps-161616)](https://bun.sh)
 

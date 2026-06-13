@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; padding: 0; }
+  .card {
+    width: 1280px; height: 640px; background: #16181d; position: relative; overflow: hidden;
+    font-family: "Georgia", "Times New Roman", serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .glow { position: absolute; inset: 0; background: radial-gradient(760px 520px at 50% 40%, rgba(205,127,90,0.14), transparent 68%); }
+  h1 { margin: 0; font-size: 132px; font-weight: 700; letter-spacing: -0.02em; color: #ece7da; z-index: 1; }
+  .tag { margin: 22px 0 0; z-index: 1; font: 400 30px/1 ui-monospace, "SF Mono", Menlo, monospace; color: #cd7f5a; }
+  .sub { margin: 24px 0 0; z-index: 1; font-size: 23px; color: #9a958c; max-width: 860px; text-align: center; line-height: 1.5; }
+  .sub b { color: #c7c1b6; font-weight: 600; }
+  svg { position: absolute; top: 70px; right: 90px; opacity: 0.9; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="glow"></div>
+  <svg width="300" height="220" viewBox="0 0 300 220" fill="none" id="g"></svg>
+  <h1>memex</h1>
+  <p class="tag">your knowledge, structured.</p>
+  <p class="sub">A local-first memory structure any AI assistant can plug into — <b>plain markdown you own</b>, no cloud, no lock-in.</p>
+  <script>
+    const N=[[60,60],[150,30],[230,90],[100,150],[210,170],[270,50]], E=[[0,1],[1,2],[0,3],[3,4],[2,4],[1,5],[2,5]];
+    const g=document.getElementById("g"), ns="http://www.w3.org/2000/svg";
+    for(const [a,b] of E){const l=document.createElementNS(ns,"line");l.setAttribute("x1",N[a][0]);l.setAttribute("y1",N[a][1]);l.setAttribute("x2",N[b][0]);l.setAttribute("y2",N[b][1]);l.setAttribute("stroke","#3a3530");l.setAttribute("stroke-width","2");g.appendChild(l);}
+    N.forEach(([x,y],i)=>{const c=document.createElementNS(ns,"circle");c.setAttribute("cx",x);c.setAttribute("cy",y);c.setAttribute("r",i%3===0?11:7);c.setAttribute("fill",i%3===0?"#cd7f5a":"#ece7da");c.setAttribute("opacity",i%3===0?"1":"0.8");g.appendChild(c);});
+  </script>
+</div>
+</body>
+</html>

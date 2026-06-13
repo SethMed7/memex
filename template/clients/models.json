@@ -3,7 +3,7 @@
   "tiers": {
     "compact": "Pre-chew hard: MAP (summaries) + the focused note + today's daily, trimmed to budget. For tiny windows and non-agentic local models that cannot read files.",
     "standard": "MAP + the whole self/ layer + the focused note and its linked-note summaries.",
-    "full": "Hand the spine (MAP + self/) and let it roam — follow [[links]] and read files / smStorage on demand. For large-window agentic models."
+    "full": "Hand the spine (MAP + self/) and let it roam — follow [[links]] and read files / assets on demand. For large-window agentic models."
   },
   "models": [
     { "match": ["claude-fable", "fable", "mythos"], "label": "Claude Fable 5", "windowTokens": 1000000, "brainFraction": 0.4, "tier": "full", "agentic": true, "structuredOutput": true, "notes": "Top tier; load the spine, let it roam." },

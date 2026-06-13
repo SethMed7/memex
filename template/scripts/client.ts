@@ -81,7 +81,7 @@ export function contextPack(model: string, opts: { focus?: string; budgetTokens?
   if (p.agentic && p.tier === "full" && !opts.assemble) {
     // Roam mode: spine + instructions. The model reads the rest itself.
     parts.push(
-      "You can read this knowledge base directly at ~/smBrain. Start from the MAP below, follow [[links]], and open notes under self/ and wiki/ as needed. Binaries are in smStorage via `storage:` refs. The layout contract is STRUCTURE.md.",
+      "You can read this knowledge base directly. Start from the MAP below, follow [[links]], and open notes under self/ and wiki/ as needed. Binaries are in the asset store via `storage:` refs. The layout contract is STRUCTURE.md.",
       "\n## MAP\n" + map,
       "\n## self/ (open the files for detail)\n" + selfFiles().map((f) => `- ${basename(f)}`).join("\n"),
     );
