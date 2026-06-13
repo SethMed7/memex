@@ -1,0 +1,16 @@
+{
+  "name": "memex",
+  "version": "0.1.0",
+  "description": "A local-first, configurable knowledge + memory structure any AI assistant can plug into. No cloud, no lock-in — plain markdown you own.",
+  "type": "module",
+  "bin": { "memex": "bin/memex.ts" },
+  "files": ["bin", "template", "README.md", "LICENSE"],
+  "license": "MIT",
+  "keywords": [
+    "knowledge-base", "memory", "second-brain", "personal-ai", "llm", "agent",
+    "local-first", "markdown", "wiki", "context", "rag"
+  ],
+  "repository": { "type": "git", "url": "https://github.com/SethMed7/memex.git" },
+  "homepage": "https://github.com/SethMed7/memex#readme",
+  "bugs": { "url": "https://github.com/SethMed7/memex/issues" }
+}

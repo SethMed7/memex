@@ -1,0 +1,22 @@
+{
+  "_notes": "CLIENT LAYER — per-model rules so anything talking to the brain works within that model's limits. windowTokens is approximate + editable (bump it for your build). tier sizes the brain context pack. agentic = can the model read files / follow [[links]] itself (CLI agents like Claude Code, Gemini CLI, Codex) vs. must be handed a pre-assembled pack (raw local model over an API, e.g. Gemma via Ollama). brainFraction = share of the window to spend on brain context (leave room for the conversation). Matching is by substring against the lowercased model id; first match wins; unknown → `default` (most constrained, safe).",
+  "tiers": {
+    "compact": "Pre-chew hard: MAP (summaries) + the focused note + today's daily, trimmed to budget. For tiny windows and non-agentic local models that cannot read files.",
+    "standard": "MAP + the whole self/ layer + the focused note and its linked-note summaries.",
+    "full": "Hand the spine (MAP + self/) and let it roam — follow [[links]] and read files / smStorage on demand. For large-window agentic models."
+  },
+  "models": [
+    { "match": ["claude-fable", "fable", "mythos"], "label": "Claude Fable 5", "windowTokens": 1000000, "brainFraction": 0.4, "tier": "full", "agentic": true, "structuredOutput": true, "notes": "Top tier; load the spine, let it roam." },
+    { "match": ["opus"], "label": "Claude Opus", "windowTokens": 1000000, "brainFraction": 0.4, "tier": "full", "agentic": true, "structuredOutput": true },
+    { "match": ["sonnet"], "label": "Claude Sonnet", "windowTokens": 200000, "brainFraction": 0.4, "tier": "full", "agentic": true, "structuredOutput": true },
+    { "match": ["haiku"], "label": "Claude Haiku", "windowTokens": 200000, "brainFraction": 0.3, "tier": "standard", "agentic": true, "structuredOutput": true, "notes": "Big window but used for quick/cheap turns — keep packs lean." },
+    { "match": ["gemini"], "label": "Gemini", "windowTokens": 1000000, "brainFraction": 0.4, "tier": "full", "agentic": true, "structuredOutput": true, "notes": "Huge window; this is the model that runs the organize/daily bookkeeping (agy)." },
+    { "match": ["gpt", "codex", "chatgpt", "o3", "o4"], "label": "ChatGPT / Codex", "windowTokens": 256000, "brainFraction": 0.4, "tier": "full", "agentic": true, "structuredOutput": true, "notes": "Codex via its CLI is agentic and code-strong." },
+    { "match": ["gemma"], "label": "Gemma (local)", "windowTokens": 8192, "brainFraction": 0.6, "tier": "compact", "agentic": false, "structuredOutput": true, "notes": "Run locally via Ollama (num_ctx ~8192). It CANNOT read files — hand it a tight pre-assembled pack. JSON only via constrained decoding." },
+    { "match": ["nemotron"], "label": "Nemotron (local)", "windowTokens": 128000, "brainFraction": 0.4, "tier": "standard", "agentic": false, "structuredOutput": true },
+    { "match": ["qwen"], "label": "Qwen (local)", "windowTokens": 128000, "brainFraction": 0.4, "tier": "standard", "agentic": false, "structuredOutput": true, "notes": "Some Qwen builds reach 256k–1M — raise windowTokens if yours does." },
+    { "match": ["glm"], "label": "GLM (local)", "windowTokens": 128000, "brainFraction": 0.4, "tier": "standard", "agentic": false, "structuredOutput": true },
+    { "match": ["llama", "mistral", "deepseek", "phi"], "label": "Other open-weight (local)", "windowTokens": 32000, "brainFraction": 0.4, "tier": "standard", "agentic": false, "structuredOutput": false }
+  ],
+  "default": { "label": "Unknown model", "windowTokens": 8192, "brainFraction": 0.5, "tier": "compact", "agentic": false, "structuredOutput": false, "notes": "Unrecognized — assume the most constrained: tiny window, pre-assemble everything, no structured output. Safe for any new local model." }
+}

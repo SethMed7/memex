@@ -1,0 +1,27 @@
+# Your memex's .gitignore (memex init writes this as `.gitignore`).
+#
+# Your DATA is ignored by default, so this memex is safe to publish or share as a structure.
+# If you keep this in a PRIVATE repo and want your knowledge versioned, delete the data lines
+# below — but NEVER commit secrets.
+
+# ── Knowledge / data (yours) ──
+self/*.md
+!self/README.md
+wiki/**/*.md
+!wiki/**/README.md
+!wiki/_templates/*.md
+history/**/*.md
+!history/**/README.md
+chats/*.md
+!chats/README.md
+inbox.md
+MAP.md
+
+# ── Secrets & local-only config — NEVER commit ──
+*.local.json
+.env
+.env.*
+
+# ── Dependencies & cruft ──
+node_modules/
+.DS_Store
