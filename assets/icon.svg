@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 256 256">
+  <!-- memex: a bold "m" standing on three memory nodes. -->
+  <rect width="256" height="256" rx="58" fill="#0d1210"/>
+  <path d="M72 182 L72 116 Q72 90 100 90 Q128 90 128 116 L128 182 M128 116 Q128 90 156 90 Q184 90 184 116 L184 182"
+        fill="none" stroke="#10b981" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="72" cy="182" r="12" fill="#6ee7b7"/>
+  <circle cx="128" cy="182" r="12" fill="#6ee7b7"/>
+  <circle cx="184" cy="182" r="12" fill="#6ee7b7"/>
+</svg>
