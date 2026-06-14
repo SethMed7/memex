@@ -10,6 +10,7 @@
  *   (c) every self/ + wiki/ note appears in MAP.md
  *   (d) no dangling [[wikilinks]]; (d2) chats well-formed + bidirectional; (d3) conversations don't bleed
  *   (d4) client registry valid; (d5) config spine present; (d6) NO LLM calls in scripts; (d7) NO secrets
+ *   (d8) per-model playbooks well-formed + within the size cap
  *   (e) wiki/ notes carry frontmatter (summary/tags/updated)
  *   (+) orphan assets that no note references (warning)
  *
@@ -167,6 +168,21 @@ const SECRET = /sk-[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|github_
 for (const f of all.filter((f) => /\.(md|ts|json|sh|txt|ya?ml|env)$/.test(f) && basename(f) !== "validate.ts")) {
   if (SECRET.test(read(f))) {
     errors.push(`possible secret committed in ${rel(f)} — secrets belong in your OS keychain / a gitignored *.local file, NEVER in the memex`);
+  }
+}
+
+// (d8) self-improving layer — playbooks well-formed + within the size cap (they ride along in packs)
+const learnDir = join(BRAIN, "clients", "learning");
+if (existsSync(learnDir)) {
+  let maxKb = 24;
+  try { maxKb = JSON.parse(read(reg)).learning?.maxKb ?? 24; } catch { /* registry checked in d4 */ }
+  for (const f of walk(learnDir).filter((f) => f.endsWith(".md") && basename(f).toLowerCase() !== "readme.md")) {
+    const head = read(f).slice(0, 200);
+    if (!head.startsWith("---") || !/\nmodel:/.test(head) || !/\nupdated:/.test(head)) {
+      warnings.push(`playbook missing model/updated frontmatter: ${rel(f)}`);
+    }
+    const kb = Buffer.byteLength(read(f)) / 1024;
+    if (kb > maxKb) warnings.push(`playbook over learning.maxKb (${kb.toFixed(0)}kb > ${maxKb}kb), will be trimmed in packs: ${rel(f)} — distill it`);
   }
 }
 

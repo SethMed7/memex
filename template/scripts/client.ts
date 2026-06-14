@@ -17,6 +17,7 @@
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
+import { mapFor } from "./learn.ts"; // self-improving layer (one-way: client composes learn)
 
 const BRAIN = join(import.meta.dir, "..");
 const REGISTRY = JSON.parse(readFileSync(join(BRAIN, "clients", "models.json"), "utf8"));
@@ -75,6 +76,17 @@ export function contextPack(model: string, opts: { focus?: string; budgetTokens?
   const map = read(join(BRAIN, "MAP.md"));
   const included: string[] = [];
   const parts: string[] = [`# Brain context — for ${p.label} (~${Math.round(p.windowTokens / 1000)}k window · tier:${p.tier} · ${p.agentic ? "agentic" : "pre-assembled"})`];
+
+  // Self-improving layer: fold in THIS model's own playbook (created on first use) so each model,
+  // when used, gets its map PLUS what it has already learned — and gets sharper each session. Grown
+  // by the model itself via `bun scripts/learn.ts add`; healed via `learn.ts heal`. (No LLM calls here.)
+  const playbook = mapFor(model);
+  if (playbook.trim()) {
+    const cap = (REGISTRY.learning?.maxKb ?? 24) * 1024;
+    parts.push("\n## your playbook — what THIS model has learned about this memex (extend it: `bun scripts/learn.ts add`)\n" +
+      (playbook.length > cap ? playbook.slice(0, cap) + "\n…[playbook trimmed to learning.maxKb]" : playbook));
+    included.push("playbook");
+  }
 
   // `assemble` forces pre-assembled content even for an agentic model — needed when the
   // *harness* gives no file access (e.g. a no-tools chat tier runs with no tools).

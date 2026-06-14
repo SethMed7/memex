@@ -18,5 +18,11 @@
     { "match": ["glm"], "label": "GLM (local)", "windowTokens": 128000, "brainFraction": 0.4, "tier": "standard", "agentic": false, "structuredOutput": true },
     { "match": ["llama", "mistral", "deepseek", "phi"], "label": "Other open-weight (local)", "windowTokens": 32000, "brainFraction": 0.4, "tier": "standard", "agentic": false, "structuredOutput": false }
   ],
-  "default": { "label": "Unknown model", "windowTokens": 8192, "brainFraction": 0.5, "tier": "compact", "agentic": false, "structuredOutput": false, "notes": "Unrecognized — assume the most constrained: tiny window, pre-assemble everything, no structured output. Safe for any new local model." }
+  "default": { "label": "Unknown model", "windowTokens": 8192, "brainFraction": 0.5, "tier": "compact", "agentic": false, "structuredOutput": false, "notes": "Unrecognized — assume the most constrained: tiny window, pre-assemble everything, no structured output. Safe for any new local model." },
+  "learning": {
+    "enabled": true,
+    "dir": "clients/learning",
+    "maxKb": 24,
+    "_notes": "SELF-IMPROVING LAYER (per model). Each model keeps a playbook at <dir>/<model-slug>.md — its own running notes on navigating + maintaining this memex. client.ts folds it back into that model's context pack every session; the model grows + heals it via scripts/learn.ts (the memex makes NO LLM calls — the model does the thinking). enabled=false turns the layer off (no playbook in packs, none created). maxKb caps how much of a playbook rides along in a pack (validate warns past it) so learnings can't crowd out the window. Playbooks are model-generated, per-instance content — gitignored by default like history/."
+  }
 }

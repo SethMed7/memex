@@ -29,6 +29,7 @@ row below, validate if load-bearing, commit. That's the whole ritual.
 | Concern | Where | What you control |
 |---|---|---|
 | **Per-model rules** | `clients/models.json` | context window, brain budget, tier, `agentic`, structured-output per model. Add a model = one JSON entry. Unknown → safe default. |
+| **Self-improving layer** | `clients/models.json` → `learning` (+ `clients/learning/<model>.md`) | per-model playbooks: `enabled`, `dir`, `maxKb` (how much rides along in a pack). Off → no playbooks. Grown/healed by the model via `scripts/learn.ts`; folded into packs by `client.ts`. |
 | **Layout contract** | `STRUCTURE.md` | the logical roots + conventions every tool resolves against; versioned. |
 | **Asset sync** | `ASSETS.md` | the `storage:` convention (text here, binaries elsewhere). |
 | **Asset store location** | `memex.local.json` → `assetsPath` (or `$MEMEX_ASSETS`) | where binaries live; default is a sibling `../<dir>-assets`. Gitignored (instance wiring). |

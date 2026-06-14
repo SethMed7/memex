@@ -14,6 +14,8 @@ history/**/*.md
 !history/**/README.md
 chats/*.md
 !chats/README.md
+clients/learning/*.md
+!clients/learning/README.md
 inbox.md
 MAP.md
 
