@@ -4,6 +4,35 @@ memex is **configurable**: its rules, policies, and permissions are *your* knobs
 hardcoded. This is the index of every knob and the law for adding more. Tools that plug in register
 their knobs here too.
 
+## What memex is — and isn't
+
+memex is a **structure** plus a thin **configuration** layer — nothing more. Outside the structure it
+holds exactly **three config concerns**, each with a deterministic engine (no LLM calls — Rule #9):
+
+1. **How each model uses the structure** — `clients/models.json` (+ `scripts/client.ts`): per-model
+   context-pack sizing/shape. Add a model = one entry.
+2. **Your settings** — `memex.local.json` (+ `scripts/mounts.ts`): `assetsPath`, `mounts`, instance wiring.
+3. **Self-mapping + improvement (model-aware)** — `MAP.md` (+ `scripts/organize.ts` / `links.ts`) and
+   `clients/learning/<model>.md` (+ `scripts/learn.ts`). This is **core**: a connected app *inherits*
+   mapping + self-improvement by pointing at the memex — it does **not** rebuild them.
+
+Everything else — feature logic, fetching, sync, UX — lives in the **connected app** (Breve, Rotli),
+never here. (Example: the resources *registry* is config here; the *fetching* is Breve's.) The `scripts/`
+are only the engines of those three concerns + structure validation (`validate.ts`) and the conversation
+write-contract (`conversations.ts`). memex doesn't grow feature scripts.
+
+## Speaking to the config (connected apps, e.g. Rotli's UI)
+
+The config files **are the API** — there's no separate endpoint. An app manages memex by reading and
+writing them per their schema + the Configuration Rule below, then running `scripts/validate.ts`:
+
+- **User instance wiring** → `memex.local.json` (gitignored): `assetsPath`, `mounts`. A Rotli "manage
+  mounts" screen edits this file; resolve the result via `scripts/mounts.ts` (`listMounts`/`resolveMount`).
+- **Shared/committed config** → `clients/models.json` (model rules), `clients/resources.json` (sources).
+- **Rules:** follow the schema; keep secrets out (Keychain only); validate after writing; resolve paths
+  via the layer's resolver, never hardcode. The app owns the **UX**; memex owns the schema, the rules,
+  the validation, and the mapping/learning the app **inherits** (via `client.ts` / `learn.ts`).
+
 ## The Configuration Rule
 
 Read this before adding or changing config — the law that keeps a memex easy to manage and build on:
