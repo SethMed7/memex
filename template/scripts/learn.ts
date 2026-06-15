@@ -21,6 +21,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
+import { parseAliases } from "./links.ts"; // findability layer (one-way; links.ts imports nothing)
 
 const BRAIN = join(import.meta.dir, "..");
 const REGISTRY = JSON.parse(readFileSync(join(BRAIN, "clients", "models.json"), "utf8"));
@@ -110,7 +111,10 @@ export function heal(model: string): Drift[] {
   const selfWiki = [...md(join(BRAIN, "self")), ...md(join(BRAIN, "wiki"))]
     .filter((f) => !f.includes("/_templates/") && basename(f).toLowerCase() !== "readme.md");
   const allNotes = [...selfWiki, ...md(join(BRAIN, "chats")), ...md(join(BRAIN, "history"))];
+  // Name-set = basenames + every declared alias, so an alias-targeted [[link]] isn't reported as
+  // drift (agrees with validate.ts's alias-aware dangling check via the shared parseAliases).
   const names = new Set(allNotes.map((f) => basename(f, ".md")));
+  for (const f of allNotes) for (const a of parseAliases(readFileSync(f, "utf8"))) names.add(a);
   const MAP = existsSync(join(BRAIN, "MAP.md")) ? readFileSync(join(BRAIN, "MAP.md"), "utf8") : "";
   const drift: Drift[] = [];
   for (const f of selfWiki) {

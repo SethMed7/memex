@@ -1,5 +1,6 @@
 ---
 summary: the basics — who/what this memex is for, in a few lines
+aliases: [Other Name, ABBR]
 tags: [self]
 updated: YYYY-MM-DD
 ---

@@ -24,5 +24,32 @@
     "dir": "clients/learning",
     "maxKb": 24,
     "_notes": "SELF-IMPROVING LAYER (per model). Each model keeps a playbook at <dir>/<model-slug>.md — its own running notes on navigating + maintaining this memex. client.ts folds it back into that model's context pack every session; the model grows + heals it via scripts/learn.ts (the memex makes NO LLM calls — the model does the thinking). enabled=false turns the layer off (no playbook in packs, none created). maxKb caps how much of a playbook rides along in a pack (validate warns past it) so learnings can't crowd out the window. Playbooks are model-generated, per-instance content — gitignored by default like history/."
+  },
+  "findability": {
+    "_notes": "FINDABILITY CLUSTER — deterministic backlinks (organize.ts renders inbound-link trails + Orphans + Unlinked-mention sections into MAP.md), plus orphan-note and unlinked-mention warnings in validate.ts. The memex makes NO LLM calls: it FLAGS findability gaps; the model/you decide what to link. All defaults also live in code (scripts/links.ts loadFindabilityConfig) — this block only overrides them. The `aliases:` frontmatter key itself is fixed (not configurable). enabled=false degrades to pre-v3 behavior (no orphan/mention warnings, no MAP backlink trails).",
+    "enabled": true,
+    "orphan": {
+      "enabled": true,
+      "includeSelf": false,
+      "graceDays": 14,
+      "exemptTags": ["orphan-ok", "standalone"],
+      "exemptFiles": ["README.md", "MAP.md", "STRUCTURE.md", "CONFIG.md", "ASSETS.md", "CHANGELOG.md", "inbox.md"]
+    },
+    "mention": {
+      "enabled": true,
+      "caseSensitive": false,
+      "minTermLength": 4,
+      "matchPluralPossessive": true,
+      "scanHeadings": false,
+      "scanConversations": false,
+      "stopwords": ["notes", "home", "index", "today", "people", "work", "todo", "readme", "map", "inbox", "title", "summary", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+    },
+    "aliases": {
+      "requireUnique": true,
+      "warnRedundantBasename": true
+    },
+    "links": {
+      "warnAmbiguous": true
+    }
   }
 }

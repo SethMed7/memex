@@ -1,0 +1,19 @@
+{
+  "_notes": "RESOURCES — external sources a connected app may FETCH FROM, plus the per-source guards it must fetch under. A resource is CONFIG (a URL + rules), not knowledge; knowledge lives in wiki/reference/ notes (a 'reference'). The memex only HOLDS this list + the guards — it never fetches and makes no LLM calls (Configuration Rule #9); the connected app (Breve, Rotli, …) does all fetching/stripping/summarizing. Committed + safe to share: public https URLs and non-secret knobs only. Add a resource = one entry in resources[]; any omitted field falls back to the most-constrained value in `defaults`. FAVORITING is ordering ONLY — it can never raise `tier`, widen reach, or relax a guard (validate.ts enforces this). reference-vs-resource: a reference is what you KNOW (a note); a resource is where you GO (a source). They join by the note's `source:` URL and a resource's `reference:` slug.",
+  "defaults": {
+    "scheme": "https-only",
+    "blockPrivateIps": true,
+    "followRedirects": "same-host-only",
+    "maxRedirects": 3,
+    "timeoutMs": 20000,
+    "maxBytes": 2000000,
+    "maxChars": 14000,
+    "cadence": "on-demand",
+    "tier": "local",
+    "trust": "untrusted",
+    "favorite": false,
+    "maxFetchesPerRun": 20,
+    "minHoursBetweenFetches": 1
+  },
+  "resources": []
+}

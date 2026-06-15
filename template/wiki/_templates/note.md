@@ -1,5 +1,6 @@
 ---
 summary: one line an LLM reads to decide relevance without opening the file
+aliases: [Other Name, ABBR]
 tags: [topic]
 updated: YYYY-MM-DD
 ---

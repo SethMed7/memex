@@ -35,6 +35,10 @@ What makes it more than a folder of notes:
   per-model client layer (`clients/models.json`) adapts the whole thing to whatever model is reading it.
 - **A self-improving layer.** Each model keeps a playbook that's folded back into its context every
   session — so it gets its map *plus what it has already learned*, and heals drift it finds as it works.
+- **Two-way trails.** Bush's idea was *associative trails* you could walk in either direction — so here
+  `[[links]]` run both ways. Every note shows what it links *to* and what links *back*, aliases let a note
+  be found under more than one name, and the validator surfaces orphans and unlinked mentions — the
+  knowledge you wrote but can no longer reach.
 
 ## Quickstart
 
@@ -88,7 +92,9 @@ Three files define how everything works, so tools never have to guess:
 - **`self/`** is the slow-changing layer about the subject — identity, values, relationships, timeline.
   Prose-first, but each file carries a one-line summary so it can be indexed.
 - **`wiki/`** is focused, `[[linked]]` notes grouped into `projects/ · research/ · reference/ · people/`.
-  Every note opens with frontmatter (`summary` · `tags` · `updated`) and closes with `## Related` links.
+  Every note opens with frontmatter (`summary` · `tags` · `aliases` · `updated`) and closes with
+  `## Related` links. `aliases:` lets a note be linked and found under more than one name — the project's
+  codename as well as its full title — which also keeps duplicates from quietly piling up.
 
 ### The conversation record — `history/` and `chats/`
 
@@ -106,7 +112,9 @@ Each tool **writes only its own surface** but **reads across both** plus the sha
 This is what makes the memex *adapt to whoever is reading it*:
 
 - **`MAP.md`** — the always-loaded spine: every note with its one-line summary, so a model can decide
-  what to open without reading everything. Regenerated deterministically from the notes.
+  what to open without reading everything. Regenerated deterministically from the notes — including the
+  **backlinks** that make every `[[link]]` two-way, so a model arriving at a note sees not just where it
+  points but everything that points *back* at it.
 - **`clients/models.json`** — per-model rules. Each model gets a context window, a `tier`, and an
   `agentic` flag; from those, the client layer sizes a pack. Unknown model → the most-constrained safe
   default. Adding a model is one JSON entry.
@@ -119,8 +127,9 @@ Deterministic and dependency-free — they read and write files, and **never cal
 
 | Script | What it does |
 |---|---|
-| `validate.ts` | the invariants gate — text-only, links resolve, no secrets, no LLM calls |
+| `validate.ts` | the invariants gate — text-only, links resolve, no secrets, no LLM calls, plus orphans + unlinked mentions |
 | `organize.ts` | rebuild `MAP.md` from each note's `summary:` |
+| `links.ts` | the findability cluster — resolve `[[links]]` + `aliases:`, compute backlinks, flag orphans and unlinked mentions |
 | `conversations.ts` | record + read conversations across both surfaces (`appendDaily` · `writeChat` · `capture`) |
 | `client.ts` | assemble a context pack sized to a given model (`contextPack`) |
 | `learn.ts` | a model's self-improving layer: `mapFor` · `learn` · `heal` |
@@ -156,6 +165,9 @@ separate, right-sized knowledge of the same memex.
   to the safest, smallest default.
 - **Self-improving, not self-modifying.** Models accumulate playbooks and heal drift, but the *structure*
   is a stable contract — learnings are additive and per-model, never a rewrite of the rules.
+- **Trails run both ways.** A link you can only walk forward is half a memory. `[[links]]` resolve to
+  backlinks, `aliases:` give a note more than one true name, and the validator names the orphans and
+  unlinked mentions — so what you wrote stays reachable instead of becoming write-only.
 - **Config-driven.** Every rule/policy/permission is a knob, governed by the Configuration Rule in
   `CONFIG.md`.
 - **The memex makes no LLM calls.** It holds only the configuration for *how* a model talks to it; the

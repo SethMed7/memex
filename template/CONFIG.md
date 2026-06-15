@@ -29,12 +29,16 @@ row below, validate if load-bearing, commit. That's the whole ritual.
 | Concern | Where | What you control |
 |---|---|---|
 | **Per-model rules** | `clients/models.json` | context window, brain budget, tier, `agentic`, structured-output per model. Add a model = one JSON entry. Unknown → safe default. |
+| **External resources (fetch-from)** | `clients/resources.json` | curated external sources a connected app may fetch + the per-source guards it fetches under (host, https-only, no-private-IP, same-host-redirect, timeout/byte/char caps, `cadence`, processing `tier`, `favorite`, `trust`). The memex only HOLDS the list + guards; the connected app does the fetching (Rule #9). Add a source = one entry; omitted field → most-constrained `default`. Favoriting changes ordering only, never trust/tier/reach. |
 | **Self-improving layer** | `clients/models.json` → `learning` (+ `clients/learning/<model>.md`) | per-model playbooks: `enabled`, `dir`, `maxKb` (how much rides along in a pack). Off → no playbooks. Grown/healed by the model via `scripts/learn.ts`; folded into packs by `client.ts`. |
+| **Findability** | `clients/models.json` → `findability` (+ `scripts/links.ts` defaults) | bidirectional backlinks rendered into `MAP.md` (`organize.ts`), orphan-note + unlinked-mention warnings (`validate.ts`), `aliases:` participation, grace days / exempt files+tags, mention min-length + stopwords + scan scope. Backlinks are GENERATED (not configured); the `aliases:` key is fixed. Off → pre-v3 behavior. |
 | **Layout contract** | `STRUCTURE.md` | the logical roots + conventions every tool resolves against; versioned. |
 | **Asset sync** | `ASSETS.md` | the `storage:` convention (text here, binaries elsewhere). |
 | **Asset store location** | `memex.local.json` → `assetsPath` (or `$MEMEX_ASSETS`) | where binaries live; default is a sibling `../<dir>-assets`. Gitignored (instance wiring). |
 | **What's indexed** | `MAP.md` + each note's `summary:` | the always-loaded spine. |
 | **Write permissions** | `STRUCTURE.md` → Conversations/Ownership | who writes where; enforced by `conversations.ts` + `validate.ts`. |
+
+**Resources vs references.** A **reference** (`wiki/reference/*.md`) is durable knowledge you *keep* — trusted, read, never fetched. A **resource** (`clients/resources.json`) is a live external source you *fetch from* — config, untrusted on arrival. *A reference is what you know; a resource is where you go.* They join by the note's `source:` URL and the resource entry's `reference:` slug; one source can be both (the note describes it, the entry governs the guarded fetch). Favoriting applies only to resources, as an ordering knob.
 
 *Tools you connect (a message platform, a chat system, …) add their own knobs as their own JSON config files
 and list them here. Keep secrets out — keychain + gitignored `*.local`.*
