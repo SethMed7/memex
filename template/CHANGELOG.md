@@ -2,6 +2,18 @@
 
 Dated log of structural/contract changes to this memex (newest first).
 
+## v3.2 — 2026-06-15
+
+- **Storage is a pure path knob (inside or outside).** The text-only invariant relaxed from "no binaries
+  anywhere" to "no binaries OUTSIDE a configured media mount" — `assetsPath` may now point at a sibling,
+  an external/Drive path, or a subtree inside the memex, a location choice with no functional difference.
+- **Named mounts.** New `scripts/mounts.ts` + a `mounts` block in `memex.local.json`: any logical folder
+  → any path (inside / sibling / external / a synced Drive a team co-manages), each with per-mount policy
+  — `external` (opaque + offline-tolerant; the memex resolves the path but doesn't validate or sync it —
+  its backend owns sync/conflicts), `media` (binaries allowed), `git` (track / ignore). `assets` is the
+  canonical mount. `validate.ts` is mount-aware (binaries allowed under media mounts; external mounts'
+  contents are skipped). The memex still makes no LLM calls and never syncs (Rule #9) — it only resolves paths.
+
 ## v3.1 — 2026-06-15
 
 - **External resources registry.** New `clients/resources.json` in the client layer: the external

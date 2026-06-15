@@ -1,4 +1,4 @@
-# Structure contract (v3.1)
+# Structure contract (v3.2)
 
 The **single source of truth** for how this memex is laid out and how tools read it. Any assistant
 or tool **resolves the logical roots below** instead of hardcoding deep paths — so the structure can
@@ -18,7 +18,8 @@ this contract changes deliberately and is versioned (bump the version + log in `
 | `mapPath` | `MAP.md` | the index/spine |
 | `clientsPath` | `clients/` | client layer — per-model rules |
 | `learningPath` | `clients/learning/` | self-improving layer — one playbook per model (`<model-slug>.md`) |
-| `assetsPath` | (configurable) | where binaries live — the `storage:` root. **Text-only here; binaries go there.** |
+| `assetsPath` | (configurable) | the canonical **assets** mount — where `storage:` binaries live. Inside or outside; a path choice, not a functional one. |
+| `mounts` | `memex.local.json` → `mounts` | named folders pointed at any path (inside, sibling, external, or a synced Drive), each with policy (`external`/`media`/`git`). Resolve via `scripts/mounts.ts`. |
 
 ## Layout
 
@@ -38,7 +39,14 @@ this contract changes deliberately and is versioned (bump the version + log in `
 
 ## Conventions
 
-- **Text-only.** Knowledge is `.md`. Binaries (png/jpg/mp3/mp4/pdf…) NEVER live here — see `ASSETS.md`.
+- **Text-only spine.** The knowledge tree is `.md`. Binaries live under a configured **media mount**
+  (the `assets` store, inside or outside) referenced with `storage:` — see `ASSETS.md`. Outside any
+  media mount the tree stays text-only.
+- **Mounts.** Any logical folder can be pointed at any path via `memex.local.json` → `mounts` — inside,
+  a sibling, or an external/synced location (a Drive a team co-manages). Per-mount policy: `external`
+  (opaque + offline-tolerant — the memex resolves the path but doesn't validate or sync it; its backend
+  owns sync/conflicts/permissions), `media` (binaries allowed), `git` (track in-tree / ignore for
+  external). Resolve via `scripts/mounts.ts`, never a hardcoded path (Rule #5). `assets` is the canonical mount.
 - **Note shape** — every `wiki/` note opens with frontmatter and closes with links:
   ```
   ---
@@ -93,7 +101,10 @@ this contract changes deliberately and is versioned (bump the version + log in `
 
 ## For tool authors
 
-Resolve the logical roots; never hardcode deep paths. Record conversations via `scripts/conversations.ts`
+Resolve the logical roots; never hardcode deep paths. Resolve named **mounts** (storage roots, external/
+Drive folders) via `scripts/mounts.ts` (`resolveMount` / `listMounts`) — a tool, or Claude Code pointed
+at the memex, writes docs into a declared mount (e.g. a Drive folder a team co-manages), never a hardcoded
+path or a project repo. Record conversations via `scripts/conversations.ts`
 (`appendDaily` / `writeChat` / `capture`); read across with its helpers. Size context with
 `scripts/client.ts` (`contextPack`) — which already folds in the model's playbook. Let a model improve
 itself with `scripts/learn.ts` (`mapFor` / `learn` / `heal`). For links/aliases use the shared

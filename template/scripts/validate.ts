@@ -30,6 +30,7 @@ import {
   findOrphans, findUnlinkedMentions, duplicateBasenames, displayTarget, loadFindabilityConfig,
   type NoteRecord,
 } from "./links.ts";
+import { mediaRoots, externalRoots } from "./mounts.ts";
 
 const BRAIN = join(import.meta.dir, "..");
 const expand = (p: string) => (p.startsWith("~") ? join(homedir(), p.slice(1)) : p);
@@ -42,6 +43,11 @@ function assetsRoot(): string {
   return join(BRAIN, "..", `${basename(BRAIN)}-assets`);
 }
 const STORAGE = assetsRoot();
+// Mounts: binaries are allowed under any `media` mount (incl. assets); `external` mounts are opaque —
+// their contents aren't validated. The assets mount in mounts.ts resolves identically to STORAGE.
+const MEDIA = mediaRoots();
+const EXTERNAL = externalRoots();
+const underAny = (f: string, roots: string[]) => roots.some((r) => r && (f === r || f.startsWith(r + "/")));
 const reg = join(BRAIN, "clients", "models.json"); // client registry — parsed by (d) findability + (d4)
 
 const BINARY_EXT = new Set([
@@ -71,17 +77,16 @@ const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_Yo
 const prose = (t: string) => t.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "");
 const isTemplate = (f: string) => rel(f).includes("/_templates/");
 
-const all = walk(BRAIN);
+const all = walk(BRAIN).filter((f) => !underAny(f, EXTERNAL)); // opaque mounts aren't validated
 const notes = all.filter((f) => f.endsWith(".md"));
 
-// (a) text-only — binaries are allowed ONLY under the configured assets root (the `storage:` store),
-// which may be a sibling/external path OR inside the memex: a location choice, not a functional one.
-// Everywhere else stays text-only so git + the LLM-wiki stay clean.
-const underAssets = (f: string) => f === STORAGE || f.startsWith(STORAGE + "/");
+// (a) text-only — binaries are allowed ONLY under a configured `media` mount (the assets store + any
+// other media mount), which may sit inside or outside the memex: a location choice, not a functional
+// one. Everywhere else stays text-only so git + the LLM-wiki stay clean. (`external` mounts are opaque.)
 for (const f of all) {
-  if (underAssets(f)) continue;
+  if (underAny(f, MEDIA)) continue;
   if (BINARY_EXT.has(extname(f).toLowerCase())) {
-    errors.push(`binary in the memex: ${rel(f)} — only the configured assets root holds binaries; put it there and reference with storage:`);
+    errors.push(`binary in the memex: ${rel(f)} — only a configured media mount holds binaries; put it there and reference with storage:`);
   }
 }
 

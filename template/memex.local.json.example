@@ -1,4 +1,12 @@
 {
   "assetsPath": "../mybrain-assets",
-  "_notes": "Local instance wiring — copy to memex.local.json (gitignored). assetsPath = where binaries referenced by `storage:` live (a sibling folder, an absolute path, an object-store mount, …). If absent, tools default to a sibling `../<dir>-assets`, or you can set the MEMEX_ASSETS env var. Real secrets go in your OS keychain, NEVER in any file here."
+  "mounts": {
+    "myproject": {
+      "path": "~/Library/CloudStorage/GoogleDrive-you@example.com/Shared drives/MyProject",
+      "external": true,
+      "media": true,
+      "git": "ignore"
+    }
+  },
+  "_notes": "Local instance wiring — copy to memex.local.json (gitignored). assetsPath = the canonical `assets` mount (where `storage:` binaries live; a sibling/absolute/object-store/Drive path, or a subtree inside the memex — or set MEMEX_ASSETS). `mounts` = named folders pointed at any path, each with policy: external (opaque + offline-tolerant; its backend owns sync — e.g. a Google Drive folder a team co-manages), media (binaries allowed), git (track in-tree / ignore for external). Tools (and Claude Code) resolve mounts via scripts/mounts.ts and write a project's docs into its mount, not a project repo. The example `myproject` mount is illustrative — delete or replace it. Real secrets go in your OS keychain, NEVER in any file here."
 }
