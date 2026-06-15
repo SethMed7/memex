@@ -34,7 +34,7 @@ row below, validate if load-bearing, commit. That's the whole ritual.
 | **Findability** | `clients/models.json` → `findability` (+ `scripts/links.ts` defaults) | bidirectional backlinks rendered into `MAP.md` (`organize.ts`), orphan-note + unlinked-mention warnings (`validate.ts`), `aliases:` participation, grace days / exempt files+tags, mention min-length + stopwords + scan scope. Backlinks are GENERATED (not configured); the `aliases:` key is fixed. Off → pre-v3 behavior. |
 | **Layout contract** | `STRUCTURE.md` | the logical roots + conventions every tool resolves against; versioned. |
 | **Asset sync** | `ASSETS.md` | the `storage:` convention (text here, binaries elsewhere). |
-| **Asset store location** | `memex.local.json` → `assetsPath` (or `$MEMEX_ASSETS`) | where binaries live; default is a sibling `../<dir>-assets`. Gitignored (instance wiring). |
+| **Asset store location** | `memex.local.json` → `assetsPath` (or `$MEMEX_ASSETS`) | where `storage:` binaries live — a sibling, an external/object-store/Drive path, **or a subtree inside the memex**. A pure path choice (no functional difference); binaries are allowed under this root wherever it sits. Default sibling `../<dir>-assets`. Gitignored (instance wiring); gitignore the subtree if you point it in-tree. |
 | **What's indexed** | `MAP.md` + each note's `summary:` | the always-loaded spine. |
 | **Write permissions** | `STRUCTURE.md` → Conversations/Ownership | who writes where; enforced by `conversations.ts` + `validate.ts`. |
 

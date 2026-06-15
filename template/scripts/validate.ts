@@ -74,10 +74,14 @@ const isTemplate = (f: string) => rel(f).includes("/_templates/");
 const all = walk(BRAIN);
 const notes = all.filter((f) => f.endsWith(".md"));
 
-// (a) text-only
+// (a) text-only — binaries are allowed ONLY under the configured assets root (the `storage:` store),
+// which may be a sibling/external path OR inside the memex: a location choice, not a functional one.
+// Everywhere else stays text-only so git + the LLM-wiki stay clean.
+const underAssets = (f: string) => f === STORAGE || f.startsWith(STORAGE + "/");
 for (const f of all) {
+  if (underAssets(f)) continue;
   if (BINARY_EXT.has(extname(f).toLowerCase())) {
-    errors.push(`binary in the memex: ${rel(f)} — move it to the asset store and reference with storage:`);
+    errors.push(`binary in the memex: ${rel(f)} — only the configured assets root holds binaries; put it there and reference with storage:`);
   }
 }
 
