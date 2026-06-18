@@ -21,9 +21,33 @@
  * serving many partitions in one process uses `forUser(name)` to get the same API bound to that
  * partition — so two users' writes never share a `history/`/`chats/`/`inbox.md`.
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, appendFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, appendFileSync, renameSync, openSync, closeSync, unlinkSync, statSync } from "node:fs";
 import { join, basename } from "node:path";
 import { userRoot } from "./mounts.ts";
+
+// ── Multi-app concurrency (v3.3) ──────────────────────────────────────────────────────────────
+// Several apps (a daemon + a desktop app) write the same memex files. memex has no DB; coordinate
+// with an atomic write (temp+rename, so a reader never sees a torn file) + a short advisory lockfile
+// around each read-modify-write (so a concurrent writer can't lose the other's update).
+const LOCK_STALE_MS = 10_000;
+function withFileLock<T>(target: string, fn: () => T): T {
+  const lock = `${target}.lock`;
+  let held = false;
+  for (let i = 0; i < 200; i++) { // ~10s ceiling
+    try { closeSync(openSync(lock, "wx")); held = true; break; }
+    catch {
+      try { if (Date.now() - statSync(lock).mtimeMs > LOCK_STALE_MS) { unlinkSync(lock); continue; } } catch { /* gone */ }
+      Bun.sleepSync(50);
+    }
+  }
+  try { return fn(); } finally { if (held) try { unlinkSync(lock); } catch { /* ok */ } }
+}
+/** Write via temp + rename so a concurrent reader never observes a partial file. */
+function atomicWrite(path: string, content: string): void {
+  const tmp = `${path}.${process.pid}.${Math.round(performance.now())}.tmp`;
+  writeFileSync(tmp, content);
+  renameSync(tmp, path);
+}
 
 const TZ = "America/New_York"; // your home tz
 export const today = (): string => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
@@ -62,16 +86,18 @@ export function makeApi(brain: string) {
     const dir = join(SURFACES.history.dir, date.slice(0, 4));
     mkdirSync(dir, { recursive: true });
     const path = join(dir, `${date}.md`);
-    if (!existsSync(path)) {
-      writeFileSync(path, `---\nsummary: (to fill)\ntags: [daily]\nupdated: ${date}\n---\n\n# ${date}\n\n## Threads\n\n## Decisions\n\n## Captures\n\n## Open\n`);
-    }
-    let t = readFileSync(path, "utf8");
-    const head = `## ${section}`;
-    const i = t.indexOf(head);
-    if (i < 0) t += `\n${head}\n- ${text}\n`;
-    else { const nl = t.indexOf("\n", i); t = t.slice(0, nl + 1) + `- ${text}\n` + t.slice(nl + 1); }
-    writeFileSync(path, t.replace(/updated:\s*.+/, `updated: ${date}`));
-    return path;
+    return withFileLock(path, () => {
+      if (!existsSync(path)) {
+        atomicWrite(path, `---\nsummary: (to fill)\ntags: [daily]\nupdated: ${date}\n---\n\n# ${date}\n\n## Threads\n\n## Decisions\n\n## Captures\n\n## Open\n`);
+      }
+      let t = readFileSync(path, "utf8");
+      const head = `## ${section}`;
+      const i = t.indexOf(head);
+      if (i < 0) t += `\n${head}\n- ${text}\n`;
+      else { const nl = t.indexOf("\n", i); t = t.slice(0, nl + 1) + `- ${text}\n` + t.slice(nl + 1); }
+      atomicWrite(path, t.replace(/updated:\s*.+/, `updated: ${date}`));
+      return path;
+    });
   }
 
   // ── WRITE · chat system → chats/ only ───────────────────────────────────────
@@ -84,19 +110,21 @@ export function makeApi(brain: string) {
     const slug = meta.slug ?? slugify(meta.title);
     const path = join(SURFACES.chats.dir, `${slug}.md`);
     const date = today();
-    if (!existsSync(path)) {
-      writeFileSync(path, [
-        "---", `id: ${meta.id ?? `${date}-${slug}`}`, `title: ${meta.title}`, `source: ${meta.source}`,
-        `attachedTo: ${meta.attachedTo ? `[[${meta.attachedTo}]]` : ""}`,
-        `participants: [${(meta.participants ?? ["you"]).join(", ")}]`,
-        `created: ${date}`, `updated: ${date}`, "tags: [chat]", "---", "",
-        `# ${meta.title}`, meta.attachedTo ? `\n> attached to [[${meta.attachedTo}]]` : "", "", "## Messages", "",
-      ].join("\n"));
-    }
-    if (messages.length) {
-      appendFileSync(path, messages.map((m) => `**${m.speaker}** · ${m.at ?? date} — ${m.text}`).join("\n") + "\n");
-      writeFileSync(path, readFileSync(path, "utf8").replace(/updated:\s*.+/, `updated: ${date}`));
-    }
+    withFileLock(path, () => {
+      if (!existsSync(path)) {
+        atomicWrite(path, [
+          "---", `id: ${meta.id ?? `${date}-${slug}`}`, `title: ${meta.title}`, `source: ${meta.source}`,
+          `attachedTo: ${meta.attachedTo ? `[[${meta.attachedTo}]]` : ""}`,
+          `participants: [${(meta.participants ?? ["you"]).join(", ")}]`,
+          `created: ${date}`, `updated: ${date}`, "tags: [chat]", "---", "",
+          `# ${meta.title}`, meta.attachedTo ? `\n> attached to [[${meta.attachedTo}]]` : "", "", "## Messages", "",
+        ].join("\n"));
+      }
+      if (messages.length) {
+        const body = readFileSync(path, "utf8") + messages.map((m) => `**${m.speaker}** · ${m.at ?? date} — ${m.text}`).join("\n") + "\n";
+        atomicWrite(path, body.replace(/updated:\s*.+/, `updated: ${date}`));
+      }
+    });
     if (meta.attachedTo) ensureChatLink(meta.attachedTo, slug); // cross-reach: note ↔ chat stays bidirectional
     return path;
   }
@@ -104,10 +132,12 @@ export function makeApi(brain: string) {
   function ensureChatLink(noteName: string, slug: string): void {
     const target = findNote(noteName);
     if (!target) return;
-    let t = readFileSync(target, "utf8");
-    if (t.includes(`[[${slug}]]`)) return;
-    t = /\n## Chat\b/.test(t) ? t.replace(/(\n## Chat\b[^\n]*\n)/, `$1- [[${slug}]]\n`) : t.replace(/\s*$/, "") + `\n\n## Chat\n- [[${slug}]]\n`;
-    writeFileSync(target, t);
+    withFileLock(target, () => {
+      let t = readFileSync(target, "utf8");
+      if (t.includes(`[[${slug}]]`)) return;
+      t = /\n## Chat\b/.test(t) ? t.replace(/(\n## Chat\b[^\n]*\n)/, `$1- [[${slug}]]\n`) : t.replace(/\s*$/, "") + `\n\n## Chat\n- [[${slug}]]\n`;
+      atomicWrite(target, t);
+    });
   }
 
   // ── READ · cross-reach (either tool spans both surfaces + shared notes) ──────

@@ -85,16 +85,54 @@ export const mapPath     = (user?: string): string => join(userRoot(user), "MAP.
 /** Shared, install-level model rules — NOT per-user (lives at the repo root). */
 export const clientsPath = (): string => join(REPO_ROOT, "clients");
 
-/** The active user for a CLI engine run: `--user <name>` flag, then $MEMEX_USER, else undefined (⇒ primary/root). */
+/**
+ * The active user/partition: `--user <name>` flag → $MEMEX_USER → memex.local.json `activeUser` →
+ * undefined (⇒ primary/root). The file fallback is the APP-NEUTRAL active-partition knob: any
+ * connected app (Rotli, a future app) persists the current persona here and every engine + app reads
+ * it through this one resolver — no app invents its own selector. (Apps layer their own stickiness/TTL
+ * above it; the knob itself carries no TTL.)
+ */
 export function currentUser(): string | undefined {
   const i = process.argv.indexOf("--user");
   if (i >= 0 && process.argv[i + 1]) return process.argv[i + 1];
-  return process.env.MEMEX_USER || undefined;
+  if (process.env.MEMEX_USER) return process.env.MEMEX_USER;
+  const a = config().activeUser;
+  return typeof a === "string" && a ? a : undefined;
+}
+
+// ── Contract version handshake ──────────────────────────────────────────────────────────────────
+// The machine-readable contract version (mirrors STRUCTURE.md). A connected app calls requireContract()
+// at startup so it FAILS LOUDLY against a contract it wasn't built for, instead of silently corrupting
+// data (the local-first "no push an update" reality means apps and contracts drift).
+export const CONTRACT_VERSION = "3.3";
+const verNum = (v: string) => v.split(".").map(Number).reduce((a, n, i) => a + n / Math.pow(1000, i), 0);
+/** Throw unless CONTRACT_VERSION is within [min, max] (inclusive, "major.minor" strings; max optional). */
+export function requireContract(min: string, max?: string): void {
+  const v = verNum(CONTRACT_VERSION);
+  if (v < verNum(min) || (max && v > verNum(max))) {
+    throw new Error(`memex contract ${CONTRACT_VERSION} outside supported range ${min}${max ? `–${max}` : "+"} — upgrade the app or the memex before writing.`);
+  }
 }
 
 /** The canonical assets mount, resolved exactly like validate.ts (env → assetsPath → sibling default). */
 function assetsPath(c: any): string {
   return expand(process.env.MEMEX_ASSETS ?? c.assetsPath ?? join(BRAIN, "..", `${basename(BRAIN)}-assets`));
+}
+
+/** The shared assets base (the `assets` mount root). */
+export const assetsRoot = (): string => assetsPath(config());
+
+/**
+ * Per-partition asset store: where a user's binaries live (text-only spine stays text-only; binaries
+ * go here via `storage:`). The primary / single-tenant default keeps the shared base (byte-identical
+ * to v1); a persona gets an ISOLATED subdir so one persona's binaries never sit in another's store.
+ * Apps must resolve binary writes through THIS, never the bare shared base.
+ */
+export function assetsPathFor(user?: string): string {
+  const base = assetsRoot();
+  const reg = registry();
+  if (!reg || !user || user === reg.primary) return base;
+  return join(base, "users", user);
 }
 
 /** All mounts with defaults filled — the synthesized `assets` mount first, then declared `mounts`. */

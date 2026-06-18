@@ -27,3 +27,7 @@ MAP.md
 # ── Dependencies & cruft ──
 node_modules/
 .DS_Store
+
+# ephemeral atomic-write temp + advisory lock files
+*.lock
+*.tmp

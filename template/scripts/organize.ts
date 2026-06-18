@@ -23,10 +23,19 @@ import {
   findOrphans, findUnlinkedMentions, duplicateBasenames, displayTarget, loadFindabilityConfig,
   type NoteRecord,
 } from "./links.ts";
-import { REPO_ROOT, userRoot, currentUser } from "./mounts.ts";
+import { REPO_ROOT, userRoot, currentUser, registry } from "./mounts.ts";
 
-// Regenerate ONE partition's MAP.md: --user/$MEMEX_USER (default primary/root). The model registry
-// (findability config) is shared at the repo root.
+// Regenerate ONE partition's MAP.md: --user/$MEMEX_USER (default primary/root). --all loops every
+// registered partition. The model registry (findability config) is shared at the repo root.
+const _reg0 = registry();
+if (process.argv.includes("--all") && _reg0) {
+  let bad = 0;
+  for (const u of _reg0.users) {
+    const r = Bun.spawnSync(["bun", import.meta.path, "--user", u.name], { stdout: "inherit", stderr: "inherit" });
+    if (r.exitCode !== 0) bad++;
+  }
+  process.exit(bad ? 1 : 0);
+}
 const BRAIN = userRoot(currentUser());
 // Local day (no Date.now leak beyond this Intl helper) — for the orphan grace check.
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
