@@ -18,9 +18,13 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
 import { mapFor } from "./learn.ts"; // self-improving layer (one-way: client composes learn)
+import { REPO_ROOT, userRoot, currentUser } from "./mounts.ts";
 
-const BRAIN = join(import.meta.dir, "..");
-const REGISTRY = JSON.parse(readFileSync(join(BRAIN, "clients", "models.json"), "utf8"));
+// The partition this pack draws from: a CLI run uses --user/$MEMEX_USER (default primary/root); a
+// connected app (Breve) passes opts.root to pack any partition from the shared script. The model
+// registry is shared, install-level — always at the repo root.
+const BRAIN = userRoot(currentUser());
+const REGISTRY = JSON.parse(readFileSync(join(REPO_ROOT, "clients", "models.json"), "utf8"));
 
 export type Profile = {
   label: string; windowTokens: number; brainFraction: number;
@@ -37,19 +41,19 @@ export function profileFor(model: string): Profile {
 const read = (p: string) => (existsSync(p) ? readFileSync(p, "utf8") : "");
 const estTokens = (s: string) => Math.round(s.length / 4);
 
-function selfFiles(): string[] {
-  const d = join(BRAIN, "self");
+function selfFiles(brain: string): string[] {
+  const d = join(brain, "self");
   return existsSync(d) ? readdirSync(d).filter((f) => f.endsWith(".md")).sort().map((f) => join(d, f)) : [];
 }
 
 /** Find a note by basename or relative path across self/ + wiki/. */
-function findNote(name: string): string | null {
+function findNote(name: string, brain: string): string | null {
   const want = basename(name);
   const walk = (dir: string): string[] => !existsSync(dir) ? [] :
     readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
       e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith(".md") ? [join(dir, e.name)] : []);
   for (const root of ["self", "wiki"]) {
-    const hit = walk(join(BRAIN, root)).find((f) => basename(f, ".md") === want || f.replace(/\.md$/, "").endsWith(name));
+    const hit = walk(join(brain, root)).find((f) => basename(f, ".md") === want || f.replace(/\.md$/, "").endsWith(name));
     if (hit) return hit;
   }
   return null;
@@ -67,13 +71,14 @@ function mapSummary(map: string, name: string): string {
  *  - agentic + full: hand the spine (MAP + self/) and tell it to roam (read files / follow [[links]]).
  *  - non-agentic / compact / standard: PRE-ASSEMBLE content (it can't read files), trimmed to budget.
  */
-export function contextPack(model: string, opts: { focus?: string; budgetTokens?: number; assemble?: boolean } = {}): {
+export function contextPack(model: string, opts: { focus?: string; budgetTokens?: number; assemble?: boolean; root?: string } = {}): {
   text: string; profile: Profile; estTokens: number; included: string[];
 } {
   const p = profileFor(model);
+  const root = opts.root ?? BRAIN; // the partition to pack from (a connected app passes another user's root)
   const budgetTokens = opts.budgetTokens ?? Math.floor(p.windowTokens * p.brainFraction);
   const budgetChars = budgetTokens * 4;
-  const map = read(join(BRAIN, "MAP.md"));
+  const map = read(join(root, "MAP.md"));
   const included: string[] = [];
   const parts: string[] = [`# Brain context — for ${p.label} (~${Math.round(p.windowTokens / 1000)}k window · tier:${p.tier} · ${p.agentic ? "agentic" : "pre-assembled"})`];
 
@@ -95,7 +100,7 @@ export function contextPack(model: string, opts: { focus?: string; budgetTokens?
     parts.push(
       "You can read this knowledge base directly. Start from the MAP below, follow [[links]], and open notes under self/ and wiki/ as needed. Binaries are in the asset store via `storage:` refs. The layout contract is STRUCTURE.md.",
       "\n## MAP\n" + map,
-      "\n## self/ (open the files for detail)\n" + selfFiles().map((f) => `- ${basename(f)}`).join("\n"),
+      "\n## self/ (open the files for detail)\n" + selfFiles(root).map((f) => `- ${basename(f)}`).join("\n"),
     );
     included.push("MAP.md", "self/ (pointers)", "roam-instructions");
   } else {
@@ -104,11 +109,11 @@ export function contextPack(model: string, opts: { focus?: string; budgetTokens?
     included.push("MAP.md");
     // self/ summaries (from MAP, which already carries them) for compact; full self/ for standard
     if (p.tier === "standard") {
-      for (const f of selfFiles()) { parts.push(`\n## self/${basename(f)}\n` + read(f)); included.push(`self/${basename(f)}`); }
+      for (const f of selfFiles(root)) { parts.push(`\n## self/${basename(f)}\n` + read(f)); included.push(`self/${basename(f)}`); }
     }
     // focused note + its linked notes' summaries
     if (opts.focus) {
-      const nf = findNote(opts.focus);
+      const nf = findNote(opts.focus, root);
       if (nf) {
         const t = read(nf);
         parts.push(`\n## focus · ${basename(nf)}\n` + t);
@@ -118,7 +123,7 @@ export function contextPack(model: string, opts: { focus?: string; budgetTokens?
       }
     }
     // today's daily summary for situational awareness
-    const hy = join(BRAIN, "history");
+    const hy = join(root, "history");
     if (existsSync(hy)) {
       const years = readdirSync(hy, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
       const dailies = years.flatMap((y) => readdirSync(join(hy, y)).filter((f) => /\d{4}-\d{2}-\d{2}\.md$/.test(f)).map((f) => join(hy, y, f)));
@@ -134,8 +139,10 @@ export function contextPack(model: string, opts: { focus?: string; budgetTokens?
 
 // CLI preview
 if (import.meta.main) {
-  const [model, focus] = process.argv.slice(2);
-  if (!model) { console.error("usage: bun scripts/client.ts <model> [focusNote]"); process.exit(1); }
+  // strip --user <name> (consumed by currentUser() → BRAIN) so it isn't mistaken for model/focus
+  const rest = process.argv.slice(2).filter((a, i, arr) => a !== "--user" && arr[i - 1] !== "--user");
+  const [model, focus] = rest;
+  if (!model) { console.error("usage: bun scripts/client.ts <model> [focusNote] [--user <name>]"); process.exit(1); }
   const pack = contextPack(model, { focus });
   console.error(`profile: ${pack.profile.label} · tier:${pack.profile.tier} · agentic:${pack.profile.agentic} · ~${pack.estTokens} tok · included: ${pack.included.join(", ")}`);
   console.log(pack.text);

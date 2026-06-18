@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "primary": "you",
+  "users": [
+    { "name": "you", "role": "admin", "path": "", "createdAt": "1970-01-01" }
+  ],
+  "_notes": "OPTIONAL multi-tenancy (v3.3). Absent ⇒ single-tenant: one implicit default user at the repo root (the default). To go multi-tenant, run `bun scripts/users.ts init-primary <you>` (writes this file), then `bun scripts/users.ts add <name>` per partition. A 'user' is an isolated knowledge partition (self/ wiki/ history/ chats/ inbox.md MAP.md) — a person OR a topic-persona. `role`: admin|member (memex DECLARES; the connected app ENFORCES who may reach which). `path`: \"\" = the repo root (the primary may stay flat/unmigrated); otherwise users/<name>. This file is committed (names/roles/paths are not secrets); identity↔phone bindings live in the connected app, never here."
+}

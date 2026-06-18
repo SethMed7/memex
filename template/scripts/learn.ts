@@ -22,11 +22,14 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
 import { parseAliases } from "./links.ts"; // findability layer (one-way; links.ts imports nothing)
+import { REPO_ROOT, userRoot, currentUser } from "./mounts.ts";
 
-const BRAIN = join(import.meta.dir, "..");
-const REGISTRY = JSON.parse(readFileSync(join(BRAIN, "clients", "models.json"), "utf8"));
+// Content to scan is per-partition (--user/$MEMEX_USER); the registry + playbooks are shared at the
+// repo root (learning is keyed by model, shared across partitions — the v3.3 default).
+const BRAIN = userRoot(currentUser());
+const REGISTRY = JSON.parse(readFileSync(join(REPO_ROOT, "clients", "models.json"), "utf8"));
 const LEARN_CFG = REGISTRY.learning ?? { enabled: true, dir: "clients/learning", maxKb: 24 };
-const LEARN_DIR = join(BRAIN, ...LEARN_CFG.dir.split("/"));
+const LEARN_DIR = join(REPO_ROOT, ...LEARN_CFG.dir.split("/"));
 
 export type Section = "Heuristics" | "Corrections" | "Watch";
 const SECTIONS: Section[] = ["Heuristics", "Corrections", "Watch"];

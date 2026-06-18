@@ -30,9 +30,26 @@ import {
   findOrphans, findUnlinkedMentions, duplicateBasenames, displayTarget, loadFindabilityConfig,
   type NoteRecord,
 } from "./links.ts";
-import { mediaRoots, externalRoots } from "./mounts.ts";
+import { mediaRoots, externalRoots, REPO_ROOT, userRoot, registry as usersRegistry, RESERVED } from "./mounts.ts";
 
-const BRAIN = join(import.meta.dir, "..");
+// ── Multi-tenancy (v3.3): validate ONE partition per run. `--all` loops every registered user;
+// `--user <name>` targets one; default = the primary (single-tenant ⇒ the repo root, byte-identical
+// to pre-v3.3). Shared install-level checks (client registry, config spine, script/secret scans, the
+// registry itself) run ONCE on the primary/single-tenant pass and locate files at REPO_ROOT.
+const argv = process.argv.slice(2);
+const reg0 = usersRegistry();
+if (argv.includes("--all") && reg0) {
+  let failed = 0;
+  for (const u of reg0.users) {
+    const r = Bun.spawnSync(["bun", import.meta.path, "--user", u.name], { stdout: "inherit", stderr: "inherit" });
+    if (r.exitCode !== 0) failed++;
+  }
+  process.exit(failed ? 1 : 0);
+}
+const _uIdx = argv.indexOf("--user");
+const USER: string | undefined = _uIdx >= 0 ? argv[_uIdx + 1] : reg0?.primary;
+const BRAIN = userRoot(USER); // single-tenant / primary-at-root ⇒ REPO_ROOT
+const SHARED = !reg0 || USER === reg0.primary; // run install-level checks once, on this pass
 const expand = (p: string) => (p.startsWith("~") ? join(homedir(), p.slice(1)) : p);
 function assetsRoot(): string {
   if (process.env.MEMEX_ASSETS) return expand(process.env.MEMEX_ASSETS);
@@ -48,7 +65,7 @@ const STORAGE = assetsRoot();
 const MEDIA = mediaRoots();
 const EXTERNAL = externalRoots();
 const underAny = (f: string, roots: string[]) => roots.some((r) => r && (f === r || f.startsWith(r + "/")));
-const reg = join(BRAIN, "clients", "models.json"); // client registry — parsed by (d) findability + (d4)
+const reg = join(REPO_ROOT, "clients", "models.json"); // client registry (shared, install-level) — parsed by (d) findability + (d4)
 
 const BINARY_EXT = new Set([
   ".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic", ".svg", ".ico",
@@ -56,11 +73,14 @@ const BINARY_EXT = new Set([
   ".pdf", ".zip", ".tar", ".gz", ".bundle", ".icns", ".sqlite", ".db",
 ]);
 
+const PARTITIONS_DIR = join(REPO_ROOT, "users"); // other partitions — validated on their own --user pass
 function walk(dir: string, out: string[] = []): string[] {
   if (!existsSync(dir)) return out;
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (e.name === ".git" || e.name === "node_modules" || e.name === ".DS_Store") continue;
+    if (e.name === "user-skeleton") continue; // the partition scaffold source (under scripts/), not content
     const p = join(dir, e.name);
+    if (p === PARTITIONS_DIR) continue; // don't let the primary-at-root pass bleed into member partitions
     if (e.isDirectory()) walk(p, out);
     else out.push(p);
   }
@@ -108,6 +128,8 @@ const indexable = notes.filter((f) => {
   if (basename(f).toLowerCase() === "readme.md") return false;
   return true;
 });
+// wiki note basenames — used by (d8) resources to check a resource's `reference: [[note]]` resolves.
+const noteBasenames = new Set(indexable.map((f) => basename(f, ".md")));
 
 // (c) MAP coverage
 const mapPath = join(BRAIN, "MAP.md");
@@ -173,7 +195,7 @@ for (const f of notes) {
 }
 
 // (d4) client registry well-formed (load-bearing)
-if (existsSync(reg)) {
+if (SHARED && existsSync(reg)) {
   try {
     const r = JSON.parse(read(reg));
     if (!Array.isArray(r.models) || !r.default) errors.push("clients/models.json missing models[] or default");
@@ -186,8 +208,8 @@ if (existsSync(reg)) {
 // A resource is config a connected app fetches under; favoriting must never escalate trust/tier and
 // no source may point at a private/loopback host (SSRF). Runtime DNS-based blocking is the connected
 // app's job (safe-fetch); this is the static, committed-config guard.
-const resReg = join(BRAIN, "clients", "resources.json");
-if (existsSync(resReg)) {
+const resReg = join(REPO_ROOT, "clients", "resources.json");
+if (SHARED && existsSync(resReg)) {
   try {
     const rr = JSON.parse(read(resReg));
     if (!Array.isArray(rr.resources) || typeof rr.defaults !== "object" || !rr.defaults) {
@@ -228,19 +250,24 @@ if (existsSync(resReg)) {
   }
 }
 
-// (d5) config spine present (the Configuration Rule)
-if (!existsSync(join(BRAIN, "STRUCTURE.md"))) errors.push("STRUCTURE.md missing — the layout contract");
-const configDoc = join(BRAIN, "CONFIG.md");
-if (!existsSync(configDoc)) errors.push("CONFIG.md missing — the Configuration Rule + knob index");
-else if (existsSync(reg) && !read(configDoc).includes("models.json")) {
-  warnings.push("CONFIG.md doesn't index clients/models.json (Configuration Rule #6: index every knob)");
+// (d5) config spine present (the Configuration Rule) — shared, at the repo root
+if (SHARED) {
+  if (!existsSync(join(REPO_ROOT, "STRUCTURE.md"))) errors.push("STRUCTURE.md missing — the layout contract");
+  const configDoc = join(REPO_ROOT, "CONFIG.md");
+  if (!existsSync(configDoc)) errors.push("CONFIG.md missing — the Configuration Rule + knob index");
+  else if (existsSync(reg) && !read(configDoc).includes("models.json")) {
+    warnings.push("CONFIG.md doesn't index clients/models.json (Configuration Rule #6: index every knob)");
+  }
 }
 
-// (d6) the memex makes NO LLM calls — only config for how a model talks to it (Rule #9)
+// (d6) the memex makes NO LLM calls — only config for how a model talks to it (Rule #9). Scans the
+// shared scripts/ at the repo root.
 const LLM_CALL = /localhost:11434|api\.(anthropic|openai)\.com|generativelanguage\.googleapis|["']\s*-p\s*["']/;
-for (const f of all.filter((f) => f.endsWith(".ts") && rel(f).startsWith("scripts/") && basename(f) !== "validate.ts")) {
-  if (LLM_CALL.test(read(f))) {
-    errors.push(`LLM/model call in a memex script (${rel(f)}) — the memex makes NO LLM calls (CONFIG.md Rule #9)`);
+if (SHARED) {
+  for (const f of walk(join(REPO_ROOT, "scripts")).filter((f) => f.endsWith(".ts") && basename(f) !== "validate.ts")) {
+    if (LLM_CALL.test(read(f))) {
+      errors.push(`LLM/model call in a memex script (${relative(REPO_ROOT, f)}) — the memex makes NO LLM calls (CONFIG.md Rule #9)`);
+    }
   }
 }
 
@@ -253,8 +280,8 @@ for (const f of all.filter((f) => /\.(md|ts|json|sh|txt|ya?ml|env)$/.test(f) && 
 }
 
 // (d8) self-improving layer — playbooks well-formed + within the size cap (they ride along in packs)
-const learnDir = join(BRAIN, "clients", "learning");
-if (existsSync(learnDir)) {
+const learnDir = join(REPO_ROOT, "clients", "learning");
+if (SHARED && existsSync(learnDir)) {
   let maxKb = 24;
   try { maxKb = JSON.parse(read(reg)).learning?.maxKb ?? 24; } catch { /* registry checked in d4 */ }
   for (const f of walk(learnDir).filter((f) => f.endsWith(".md") && basename(f).toLowerCase() !== "readme.md")) {
@@ -265,6 +292,33 @@ if (existsSync(learnDir)) {
     const kb = Buffer.byteLength(read(f)) / 1024;
     if (kb > maxKb) warnings.push(`playbook over learning.maxKb (${kb.toFixed(0)}kb > ${maxKb}kb), will be trimmed in packs: ${rel(f)} — distill it`);
   }
+}
+
+// (h) multi-tenancy registry well-formed (load-bearing) — runs once on the primary pass.
+if (SHARED && reg0) {
+  const SLUG = /^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/;
+  const names = reg0.users.map((u) => u.name);
+  if (new Set(names).size !== names.length) errors.push("users.json has duplicate user names");
+  if (!names.includes(reg0.primary)) errors.push(`users.json primary "${reg0.primary}" not in users[]`);
+  if (reg0.users.filter((u) => u.role === "admin").length === 0)
+    warnings.push("users.json declares no admin — the connected app enforces access; an admin is expected to span partitions");
+  for (const u of reg0.users) {
+    const at = `users.json [${u.name ?? "?"}]`;
+    if (!u.name || !SLUG.test(u.name)) errors.push(`${at}: name must be a lowercase slug (2–40 chars)`);
+    if (RESERVED.has(u.name)) errors.push(`${at}: "${u.name}" is a reserved name`);
+    if (u.role !== "admin" && u.role !== "member") errors.push(`${at}: role must be admin|member`);
+    // path "" is the primary's unmigrated flat root; otherwise exactly users/<name>; never escapes the repo
+    const okPath = u.path === "" ? u.name === reg0.primary : u.path === `users/${u.name}`;
+    if (!okPath) errors.push(`${at}: path must be "users/${u.name}" (or "" for the primary)`);
+    if (typeof u.path === "string" && u.path.includes("..")) errors.push(`${at}: path escapes the repo`);
+    const abs = u.path ? join(REPO_ROOT, u.path) : REPO_ROOT;
+    if (!existsSync(abs)) errors.push(`${at}: partition dir missing (${u.path || "repo root"})`);
+    else for (const r of ["self", "wiki", "history", "chats", "inbox.md", "MAP.md"])
+      if (!existsSync(join(abs, r))) warnings.push(`${at}: missing root ${r} (run \`bun scripts/users.ts add ${u.name}\` to re-scaffold)`);
+  }
+  const usersDir = join(REPO_ROOT, "users");
+  if (existsSync(usersDir)) for (const d of readdirSync(usersDir, { withFileTypes: true }))
+    if (d.isDirectory() && !names.includes(d.name)) warnings.push(`users/${d.name}/ on disk but not in users.json (orphaned partition?)`);
 }
 
 // (e) frontmatter on wiki/ notes

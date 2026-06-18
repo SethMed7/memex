@@ -2,6 +2,34 @@
 
 Dated log of structural/contract changes to this memex (newest first).
 
+## v3.3 — 2026-06-18
+
+- **Native multi-tenancy.** One memex repo can now hold several isolated knowledge partitions
+  ("users") under `users/<name>/`, each with its own `self/ wiki/ history/ chats/ inbox.md MAP.md`.
+  A "user" is a named partition — a person OR a topic-persona of the same human. New committed
+  `users.json` registry declares the partitions (`name`, `role` admin|member, `path`, `createdAt`)
+  and the single `primary` (default) partition. memex **declares** partitions + access policy; the
+  connected app (e.g. Breve) **enforces** who may reach which at runtime — memex makes no LLM/network
+  calls and holds no identity/phone data.
+- **Resolver is user-aware.** `scripts/mounts.ts` gains `REPO_ROOT`, `registry()`, `userRoot(name?)`,
+  `currentUser()`, and per-user logical roots (`knowledgePath(user)`, `selfPath(user)`, …).
+  `clients/` stays shared/install-level at the repo root; only the knowledge spine is per partition.
+- **Backward compatible (safe default, Rule #2).** No `users.json` ⇒ single-tenant: one implicit
+  default user whose root **is** the repo root — byte-identical to pre-v3.3. The primary may keep
+  `path: ""` (flat at the root, unmigrated). An unknown user name is an error, never a cross-partition
+  read.
+- **Management engine.** New `scripts/users.ts` + `scripts/user-skeleton/` (the data-free spine) +
+  `memex user …` passthrough: `add` / `list` / `remove [--purge]` / `init-primary [--migrate]`. Pure
+  file ops — scaffold a partition, edit `users.json` atomically (temp+rename), refuse
+  duplicate/reserved/unsafe names, never hard-delete (`--purge` moves to `trash/`).
+- **Per-partition engines.** `validate.ts` gains `--user`/`--all` and an `(h)` registry-invariants
+  cluster (well-formed registry, primary exists, slug/reserved/role/path checks, no path escapes the
+  repo, partitions have required roots); install-level checks (client registry, config spine, script
+  +secret scans) run once on the primary pass. `organize.ts` (per-partition `MAP.md`), `client.ts`
+  (`contextPack(model, { root })` packs any partition), and `conversations.ts` (`forUser(name)`
+  factory) all operate per partition — partitions never bleed into one another's graph.
+- Still **NO LLM calls** and **NO network** in the memex (Rule #9).
+
 ## v3.2 — 2026-06-15
 
 - **Storage is a pure path knob (inside or outside).** The text-only invariant relaxed from "no binaries

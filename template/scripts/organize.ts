@@ -23,8 +23,11 @@ import {
   findOrphans, findUnlinkedMentions, duplicateBasenames, displayTarget, loadFindabilityConfig,
   type NoteRecord,
 } from "./links.ts";
+import { REPO_ROOT, userRoot, currentUser } from "./mounts.ts";
 
-const BRAIN = join(import.meta.dir, "..");
+// Regenerate ONE partition's MAP.md: --user/$MEMEX_USER (default primary/root). The model registry
+// (findability config) is shared at the repo root.
+const BRAIN = userRoot(currentUser());
 // Local day (no Date.now leak beyond this Intl helper) — for the orphan grace check.
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
 
@@ -70,7 +73,7 @@ const summaryOf = (file: string): string => frontmatterSummary(file) || prev[bas
 
 // ── findability index (shared scripts/links.ts) — backlink trails + Orphans + Unlinked mentions ──────
 let registry: any = {};
-try { registry = JSON.parse(readFileSync(join(BRAIN, "clients", "models.json"), "utf8")); } catch { /* defaults */ }
+try { registry = JSON.parse(readFileSync(join(REPO_ROOT, "clients", "models.json"), "utf8")); } catch { /* defaults */ }
 const findCfg = loadFindabilityConfig(registry);
 
 // Walk ACTUAL note dirs (not the fixed section list) so the index spans every link target.

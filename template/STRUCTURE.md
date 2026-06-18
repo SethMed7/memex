@@ -1,4 +1,4 @@
-# Structure contract (v3.2)
+# Structure contract (v3.3)
 
 The **single source of truth** for how this memex is laid out and how tools read it. Any assistant
 or tool **resolves the logical roots below** instead of hardcoding deep paths — so the structure can
@@ -7,17 +7,22 @@ this contract changes deliberately and is versioned (bump the version + log in `
 
 ## Logical roots (what tools resolve)
 
+The knowledge roots resolve **per user** (see *Tenancy* below). Single-tenant (no `users.json`) ⇒ one
+implicit default user whose root **is** the repo root, so the paths are exactly as shown.
+
 | Root | Path | Meaning |
 |------|------|---------|
-| `knowledgePath` | the memex dir | the knowledge base (this folder) |
-| `selfPath` | `self/` | the whole-person / whole-entity layer |
-| `wikiPath` | `wiki/` | focused, linked notes |
-| `historyPath` | `history/` | by-day conversation stream (message-platform shape) |
-| `chatsPath` | `chats/` | named, attachable conversations (chat-system shape) |
-| `inboxPath` | `inbox.md` | capture zone |
-| `mapPath` | `MAP.md` | the index/spine |
-| `clientsPath` | `clients/` | client layer — per-model rules |
-| `learningPath` | `clients/learning/` | self-improving layer — one playbook per model (`<model-slug>.md`) |
+| `repoRoot` | the memex dir | the distribution: shared `scripts/` + contracts + `clients/` + `users.json`. Never moves. |
+| `usersRegistry` | `users.json` | (multi-tenant only) declares the knowledge partitions + the `primary`. Resolve via `scripts/mounts.ts` (`registry` / `userRoot` / `listUsers`). |
+| `knowledgePath(user?)` | `userRoot(user)` — `users/<name>/` (or the repo root for the primary / single-tenant) | the knowledge base for that partition |
+| `selfPath(user?)` | `userRoot(user)/self/` | the whole-person / whole-entity layer |
+| `wikiPath(user?)` | `userRoot(user)/wiki/` | focused, linked notes |
+| `historyPath(user?)` | `userRoot(user)/history/` | by-day conversation stream (message-platform shape) |
+| `chatsPath(user?)` | `userRoot(user)/chats/` | named, attachable conversations (chat-system shape) |
+| `inboxPath(user?)` | `userRoot(user)/inbox.md` | capture zone |
+| `mapPath(user?)` | `userRoot(user)/MAP.md` | the index/spine |
+| `clientsPath` | `clients/` (repo root, **shared**) | client layer — per-model rules (install-level, not per-user) |
+| `learningPath` | `clients/learning/` | self-improving layer — one playbook per model (`<model-slug>.md`), shared across partitions |
 | `assetsPath` | (configurable) | the canonical **assets** mount — where `storage:` binaries live. Inside or outside; a path choice, not a functional one. |
 | `mounts` | `memex.local.json` → `mounts` | named folders pointed at any path (inside, sibling, external, or a synced Drive), each with policy (`external`/`media`/`git`). Resolve via `scripts/mounts.ts`. |
 
@@ -25,16 +30,21 @@ this contract changes deliberately and is versioned (bump the version + log in `
 
 ```
 <memex>/                  TEXT ONLY (markdown + small deterministic scripts). No binaries, ever.
-  README.md  STRUCTURE.md  CONFIG.md  ASSETS.md  CHANGELOG.md  MAP.md  inbox.md
-  self/                   00-identity … 11-timeline (slow-changing whole-person layer)
-  wiki/                   projects/ research/ reference/ people/ _templates/  (focused [[linked]] notes)
-  history/<YYYY>/<YYYY-MM-DD>.md   conversation stream by day (message-platform shape)
-  chats/<slug>.md         named, attachable conversations (chat-system shape)
-  clients/models.json     client layer — per-model rules
+  README.md  STRUCTURE.md  CONFIG.md  ASSETS.md  CHANGELOG.md
+  users.json              (multi-tenant only) the partition registry
+  clients/models.json     client layer — per-model rules (SHARED, install-level)
   clients/resources.json  client layer — external sources to fetch from + per-source fetch guards
-  clients/learning/<model-slug>.md   self-improving layer — one playbook per model
+  clients/learning/<model-slug>.md   self-improving layer — one playbook per model (shared)
   archive/  trash/        retired (kept) · soft-deleted (purgeable)
-  scripts/                deterministic tooling: validate · organize · conversations · client · learn · links (NO LLM calls)
+  scripts/                deterministic tooling: validate · organize · conversations · client · learn · links · users (NO LLM calls)
+  scripts/user-skeleton/  the data-free spine copied when a partition is added
+
+  # single-tenant (no users.json): the knowledge spine lives at the repo root —
+  self/  wiki/  history/<YYYY>/<YYYY-MM-DD>.md  chats/<slug>.md  inbox.md  MAP.md
+
+  # multi-tenant (users.json present): the spine lives PER PARTITION —
+  users/<name>/{ self/  wiki/  history/  chats/  inbox.md  MAP.md }
+  # (the primary partition may stay flat at the repo root with path "" until migrated)
 ```
 
 ## Conventions
@@ -77,6 +87,17 @@ this contract changes deliberately and is versioned (bump the version + log in `
   - **Ownership / no bleed:** a tool writes ONLY its own surface (message platform → `history/`, chat
     system → `chats/`); both READ across both + the shared notes. Enforced by `scripts/conversations.ts`.
 - **Lifecycle:** `inbox.md` (capture) → filed into `self/`/`wiki/`/`history/` → `archive/` → `trash/`.
+- **Tenancy (multi-user).** A memex is single-subject **by default** (no `users.json` ⇒ one implicit
+  default user at the repo root — the safe default). It can hold several **isolated knowledge
+  partitions** ("users") under `users/<name>/`, each a full spine of its own — a *person* OR a
+  *topic-persona* of the same human (e.g. `seth-marketing`). Declared in the committed `users.json`
+  registry (`name`, `role` admin|member, `path`, the single `primary`). Manage with
+  `bun scripts/users.ts add|list|remove|init-primary` (pure file ops). Resolve a partition with
+  `userRoot(name)` / `knowledgePath(name)`; **never** hardcode `users/<name>/…`. memex only
+  **declares** partitions and the access policy (admin spans all, members siloed) — a **connected app
+  enforces** who may reach which at runtime (memex makes no LLM calls and holds no identity/phone
+  data). `clients/` and the contracts stay shared at the repo root; only the knowledge spine is
+  per-partition, and each partition validates/indexes/packs in isolation (no cross-partition bleed).
 
 ## Memory model (model-aware)
 

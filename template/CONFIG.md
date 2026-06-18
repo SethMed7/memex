@@ -16,6 +16,11 @@ holds exactly **three config concerns**, each with a deterministic engine (no LL
 3. **Self-mapping + improvement (model-aware)** — `MAP.md` (+ `scripts/organize.ts` / `links.ts`) and
    `clients/learning/<model>.md` (+ `scripts/learn.ts`). This is **core**: a connected app *inherits*
    mapping + self-improvement by pointing at the memex — it does **not** rebuild them.
+4. **Tenancy — who the structure is partitioned for** — `users.json` (+ `scripts/users.ts`): the named
+   knowledge partitions ("users") this memex holds and the declared access policy (admin spans all,
+   members siloed). memex **declares**; the connected app **enforces** at runtime. **Single-tenant by
+   default** (no `users.json` ⇒ one implicit default user at the repo root). Holds no identity/phone
+   data — that binding lives in the connected app.
 
 Everything else — feature logic, fetching, sync, UX — lives in the **connected app** (Breve, Rotli),
 never here. (Example: the resources *registry* is config here; the *fetching* is Breve's.) The `scripts/`
@@ -69,6 +74,8 @@ row below, validate if load-bearing, commit. That's the whole ritual.
 | **Mounts** | `memex.local.json` → `mounts` | named folders pointed at any path (inside / sibling / external / a synced Drive), each with policy: `external` (opaque + offline-tolerant — the memex resolves the path but doesn't validate or sync it; its backend owns sync/conflicts/permissions), `media` (binaries allowed), `git` (track in-tree / ignore for external). Resolve via `scripts/mounts.ts`; `assets` is the canonical mount. A tool — or Claude Code pointed at the memex — writes a project's docs into its mount (e.g. a Drive folder a team co-manages), not a project repo. |
 | **What's indexed** | `MAP.md` + each note's `summary:` | the always-loaded spine. |
 | **Write permissions** | `STRUCTURE.md` → Conversations/Ownership | who writes where; enforced by `conversations.ts` + `validate.ts`. |
+| **Tenancy / partitions** | `users.json` (committed) (+ `scripts/users.ts` / `scripts/mounts.ts`) | the isolated knowledge partitions ("users") this memex holds: each `name` (fs-safe slug), `role` (admin\|member), `path` (`users/<name>`, or `""` for the primary), and the single `primary`. The resolver derives the spine per partition (`userRoot`/`knowledgePath(user)`/…). **No `users.json` ⇒ single-tenant** (one implicit default user at the repo root — the safe default, Rule #2; unknown name → error, never a cross-partition read). Manage with `bun scripts/users.ts add\|list\|remove\|init-primary` (pure file ops). |
+| **Access policy** | `users.json` → `role` + `primary` | memex **declares** that the admin/primary partition may span all partitions while members are siloed; it does **not** enforce it. The **connected app** (e.g. Breve) enforces this at runtime — memex's job is the registry + per-user roots + validation, never runtime authz, and it stores no identity/phone bindings. |
 
 **Resources vs references.** A **reference** (`wiki/reference/*.md`) is durable knowledge you *keep* — trusted, read, never fetched. A **resource** (`clients/resources.json`) is a live external source you *fetch from* — config, untrusted on arrival. *A reference is what you know; a resource is where you go.* They join by the note's `source:` URL and the resource entry's `reference:` slug; one source can be both (the note describes it, the entry governs the guarded fetch). Favoriting applies only to resources, as an ordering knob.
 

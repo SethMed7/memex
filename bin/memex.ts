@@ -36,6 +36,19 @@ if (cmd === "--version" || cmd === "-v") {
   process.exit(0);
 }
 
+// `memex user …` — manage partitions inside the current instance (cwd or $MEMEX_ROOT) by delegating
+// to that instance's own scripts/users.ts (the canonical engine; v3.3 multi-tenancy).
+if (cmd === "user") {
+  const root = process.env.MEMEX_ROOT ?? process.cwd();
+  const script = join(root, "scripts", "users.ts");
+  if (!existsSync(script)) {
+    console.error(`✗ no memex here (${script} missing) — run inside an instance, or set MEMEX_ROOT`);
+    process.exit(1);
+  }
+  const r = Bun.spawnSync(["bun", script, ...process.argv.slice(3)], { stdout: "inherit", stderr: "inherit" });
+  process.exit(r.exitCode ?? 0);
+}
+
 if (cmd !== "init") {
   console.log("usage:\n  memex init [dir]   scaffold a new memex (default ./memex)\n  memex --version");
   process.exit(cmd ? 1 : 0);
