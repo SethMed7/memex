@@ -1,0 +1,4 @@
+{
+  "_notes": "OPTIONAL, GITIGNORED — copy to identities.local.json. Identity HANDLES (PII) mapping a memex user → how each frontend logs them in: phone/uuid (Breve, Signal), email (Rotli login). One shared store so a user is the SAME across apps. Secrets (passwords, passphrase hashes) NEVER go here — those live in the OS keychain. Absent ⇒ single-user / local.",
+  "you": { "phone": "+1XXXXXXXXXX", "uuid": "00000000-0000-0000-0000-000000000000", "email": "you@example.com" }
+}

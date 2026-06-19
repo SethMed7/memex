@@ -31,3 +31,6 @@ node_modules/
 # ephemeral atomic-write temp + advisory lock files
 *.lock
 *.tmp
+
+# identity handles (PII) — gitignored; commit only the *.example
+identities.local.json

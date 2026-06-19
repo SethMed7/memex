@@ -80,10 +80,21 @@ function validateName(name: string, reg: Registry | null): void {
 const [cmd, name, ...flags] = process.argv.slice(2);
 const has = (f: string) => flags.includes(f);
 
+if (cmd === "mode") {
+  const reg = readRegistry();
+  if (!reg) die("no registry — run `init-primary <you>` first");
+  if (!name) { console.log(`mode: ${reg!.mode ?? "secure"} (local | open | secure)`); process.exit(0); }
+  if (!["local", "open", "secure"].includes(name)) die(`mode must be local | open | secure`);
+  reg!.mode = name as any;
+  writeRegistry(reg!);
+  console.log(`✓ access mode → ${name}`);
+  process.exit(0);
+}
+
 if (cmd === "list") {
   const reg = readRegistry();
   if (!reg) { console.log("single-tenant: one implicit default user at the repo root (no users.json)"); process.exit(0); }
-  console.log(`registry v${reg.version} · primary: ${reg.primary}`);
+  console.log(`registry v${reg.version} · primary: ${reg.primary} · mode: ${reg.mode ?? "secure"}`);
   for (const u of reg.users) {
     console.log(`  ${u.name === reg.primary ? "★" : "·"} ${u.name.padEnd(20)} ${u.role.padEnd(7)} ${u.path || "(repo root)"}`);
   }
@@ -162,7 +173,7 @@ if (cmd === "init-primary") {
   process.exit(0);
 }
 
-console.log("usage: bun scripts/users.ts list | add <name> | remove <name> [--purge] | init-primary <name> [--migrate]");
+console.log("usage: bun scripts/users.ts list | add <name> | remove <name> [--purge] | init-primary <name> [--migrate] | mode [local|open|secure]");
 process.exit(cmd ? 1 : 0);
 
 export {}; // module marker (CLI-only)

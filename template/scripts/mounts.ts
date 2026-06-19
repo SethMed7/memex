@@ -40,8 +40,15 @@ export const RESERVED = new Set([
 ]);
 
 export type Role = "admin" | "member";
-export type UserEntry = { name: string; role: Role; path: string; createdAt?: string };
-export type Registry = { version: number; primary: string; users: UserEntry[] };
+export type AccessMode = "local" | "open" | "secure";
+export type UserEntry = { name: string; role: Role; path: string; powers?: string[]; createdAt?: string };
+export type Registry = {
+  version: number;
+  primary: string;
+  users: UserEntry[];
+  mode?: AccessMode;            // local (1 user, no auth) · open (multi-user, isolated, no auth) · secure (RBAC + step-up auth)
+  auth?: { stepUp?: string[] }; // secure-mode factors for an admin entering a bound space, e.g. ["email-code","weekly-passphrase"]
+};
 
 /** The partition registry, or null when single-tenant (absent/invalid ⇒ null). */
 export function registry(): Registry | null {
@@ -50,6 +57,30 @@ export function registry(): Registry | null {
     if (!Array.isArray(raw?.users) || typeof raw?.primary !== "string") return null;
     return raw as Registry;
   } catch { return null; }
+}
+
+/**
+ * The access MODE — the use-case knob a connected app honors. No registry ⇒ "local" (single user,
+ * no auth/isolation). A registry with no explicit mode ⇒ "secure" (SAFE default: never silently
+ * drop isolation/auth on an existing multi-tenant memex). Set it with `users.ts mode <m>`.
+ */
+export function accessMode(): AccessMode {
+  const reg = registry();
+  if (!reg) return "local";
+  return reg.mode ?? "secure";
+}
+
+/**
+ * Identity HANDLES — the app-neutral, gitignored map name → {phone,uuid,email} that EVERY frontend
+ * resolves a login against (Breve matches a phone/uuid; Rotli an email/phone). PII, so it lives in a
+ * gitignored file, never the committed registry. Absent ⇒ {} (single-user / local).
+ */
+export type Identity = { phone?: string; uuid?: string; email?: string };
+export function identities(): Record<string, Identity> {
+  try {
+    const raw = JSON.parse(readFileSync(process.env.MEMEX_IDENTITIES ?? join(REPO_ROOT, "identities.local.json"), "utf8"));
+    return raw && typeof raw === "object" ? raw : {};
+  } catch { return {}; }
 }
 
 /** Declared partitions ([] when single-tenant). */

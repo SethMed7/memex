@@ -1,8 +1,10 @@
 {
-  "version": 1,
+  "version": 2,
+  "mode": "local",
+  "auth": { "stepUp": ["email-code", "weekly-passphrase"] },
   "primary": "you",
   "users": [
-    { "name": "you", "role": "admin", "path": "", "createdAt": "1970-01-01" }
+    { "name": "you", "role": "admin", "path": "", "powers": ["knowledge"], "createdAt": "1970-01-01" }
   ],
-  "_notes": "OPTIONAL multi-tenancy (v3.3). Absent ⇒ single-tenant: one implicit default user at the repo root (the default). To go multi-tenant, run `bun scripts/users.ts init-primary <you>` (writes this file), then `bun scripts/users.ts add <name>` per partition. A 'user' is an isolated knowledge partition (self/ wiki/ history/ chats/ inbox.md MAP.md) — a person OR a topic-persona. `role`: admin|member (memex DECLARES; the connected app ENFORCES who may reach which). `path`: \"\" = the repo root (the primary may stay flat/unmigrated); otherwise users/<name>. This file is committed (names/roles/paths are not secrets); identity↔phone bindings live in the connected app, never here."
+  "_notes": "OPTIONAL multi-tenancy + access policy (v3.3). Absent ⇒ single-tenant at the repo root. `mode` is the use-case knob every frontend honors: 'local' (one user, no auth/isolation — a local notes app), 'open' (multi-user, partitions isolated at the OS layer, but switching is free — no auth), 'secure' (RBAC + step-up auth when an admin enters someone else's bound space). `auth.stepUp` = the secure-mode factors. A 'user' is an isolated knowledge partition; `role` admin|member, `powers` what they may do, `path` \"\"=repo root (primary) else users/<name>. This file is COMMITTED (no PII/secrets): identity handles (phone/email) live gitignored in identities.local.json; secrets in the OS keychain. memex DECLARES; the connected app ENFORCES. Set with `users.ts mode|add|remove`, slash commands, or a frontend."
 }
