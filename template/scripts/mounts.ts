@@ -156,7 +156,7 @@ export function requireContract(min: string, max?: string): void {
 // before writing. This is how Rotli can attach to a live Breve memex purely additively (Config Rule:
 // proper boundaries — one app never breaks another).
 const MEMEX_JSON = () => process.env.MEMEX_INFO ?? join(REPO_ROOT, "memex.json");
-export type MemexInfo = { id: string; contract: string; createdAt: string; apps: Record<string, { role?: string; connectedAt: string }> };
+export type MemexInfo = { id: string; contract: string; createdAt: string; selfHeal?: boolean; apps: Record<string, { role?: string; connectedAt: string }> };
 
 /** This instance's identity card, or null if not yet stamped (a pre-identity memex). */
 export function memexInfo(): MemexInfo | null {
@@ -172,7 +172,7 @@ export const connectedApps = (): string[] => Object.keys(memexInfo()?.apps ?? {}
 export function ensureMemexInfo(nowIso: string): MemexInfo {
   const existing = memexInfo();
   if (existing) return existing;
-  return { id: `mx_${randomUUID()}`, contract: CONTRACT_VERSION, createdAt: nowIso, apps: {} };
+  return { id: `mx_${randomUUID()}`, contract: CONTRACT_VERSION, createdAt: nowIso, selfHeal: true, apps: {} };
 }
 
 /**

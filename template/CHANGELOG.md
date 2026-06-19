@@ -15,6 +15,13 @@ Dated log of structural/contract changes to this memex (newest first).
 - **Access mode fails closed.** `accessMode()` now normalizes + validates: any malformed/typo/
   non-string `mode` collapses to the most-restrictive `secure` (was returned verbatim, which could
   silently disable a connected app's step-up auth).
+- **Self-heal + delete-safety** (`scripts/heal.ts`): `heal()`/`ensureHealthy()` recreate ONLY missing
+  structure (data dirs + each partition's spine, from the skeleton) — never overwriting or deleting
+  existing content; idempotent; gated by `memex.json` `selfHeal` (default true). An app heals on
+  plug-in/startup (`memex connect` auto-heals; Breve heals on boot) to rebuild what it needs.
+  `trash()` makes delete REVERSIBLE — apps move a path into `trash/` and NEVER hard-delete; the
+  PROTECTED structure (spine dirs + contract files) is un-trashable. `purge --confirm` is the only
+  true delete (operator-gated). CLI: `memex heal [--dry]` · `memex trash <path>` · `memex purge --confirm`.
 
 ## v3.3 — 2026-06-18
 

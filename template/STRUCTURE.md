@@ -20,6 +20,19 @@ multiple apps share one memex **without breaking each other**:
   ownership), reads shared policy/handles/model-rules read-only, and registers its own config as its
   own file. **You never edit one app's files to make another work.**
 
+### Durability & delete-safety
+
+- **Self-heal** (`scripts/heal.ts` · `heal`/`ensureHealthy`): recreates ONLY what's MISSING (data dirs
+  + each partition's spine, from the data-free skeleton) — **never overwrites or deletes** an existing
+  file. Idempotent. An app heals on plug-in/startup ("rebuild what it needs"); `memex heal [--dry]` is
+  on-demand. Gated by `memex.json` `selfHeal` (default true) — *the whole thing is configurable*. So a
+  manual edit / partial loss self-repairs without touching your content.
+- **No app hard-deletes.** "Delete" = `trash(path)` → moves into `trash/` (reversible). The PROTECTED
+  structure (the spine dirs + contract files) is **un-trashable** — the main structure can't be
+  removed by any app. The OS sandbox additionally blocks the model tier from reaching the repo root /
+  other partitions. **Only the operator truly deletes**, via `memex purge --confirm` (or by hand) —
+  nothing is ever lost without your hand.
+
 ## Logical roots (what tools resolve)
 
 The knowledge roots resolve **per user** (see *Tenancy* below). Single-tenant (no `users.json`) ⇒ one
