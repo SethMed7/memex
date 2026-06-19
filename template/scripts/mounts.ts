@@ -67,7 +67,9 @@ export function registry(): Registry | null {
 export function accessMode(): AccessMode {
   const reg = registry();
   if (!reg) return "local";
-  return reg.mode ?? "secure";
+  // Normalize + fail closed: a malformed/typo/non-string mode collapses to the most-restrictive "secure".
+  const m = typeof reg.mode === "string" ? reg.mode.trim().toLowerCase() : "";
+  return m === "local" || m === "open" ? (m as AccessMode) : "secure";
 }
 
 /**
