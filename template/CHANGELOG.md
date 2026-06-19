@@ -2,6 +2,20 @@
 
 Dated log of structural/contract changes to this memex (newest first).
 
+## v3.4 — 2026-06-19
+
+- **Instance identity + additive plug-in.** New committed `memex.json` per instance: a stable `id`
+  (`mx_<uuid>`, stamped at `memex init`), the `contract` version, and an additive `apps` registry.
+  `mounts.ts` gains `memexId()`/`memexInfo()`/`connectedApps()`/`connectApp()` and a CLI
+  (`memex id` · `memex connect <app> [role]` · `memex apps`). An app PLUGS IN additively — `connectApp`
+  creates the id if absent and merges only its own entry, never clobbering another app's data or
+  re-initing. Apps PIN to `memexId()` + call `requireContract()` before writing. So a second app (e.g.
+  Rotli) attaches to a live memex purely additively — proper boundaries, no app breaks another, no
+  manual edits to make one work.
+- **Access mode fails closed.** `accessMode()` now normalizes + validates: any malformed/typo/
+  non-string `mode` collapses to the most-restrictive `secure` (was returned verbatim, which could
+  silently disable a connected app's step-up auth).
+
 ## v3.3 — 2026-06-18
 
 - **Native multi-tenancy.** One memex repo can now hold several isolated knowledge partitions

@@ -10,8 +10,9 @@
  * node built-ins, so there's nothing to install. Tools (a message platform, a chat system, …) can
  * invoke this same init to build a memex for a user, with permission.
  */
-import { readdirSync, mkdirSync, copyFileSync, existsSync, readFileSync } from "node:fs";
+import { readdirSync, mkdirSync, copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { randomUUID } from "node:crypto";
 
 const PKG_ROOT = join(import.meta.dir, "..");
 const TEMPLATE = join(PKG_ROOT, "template");
@@ -36,16 +37,17 @@ if (cmd === "--version" || cmd === "-v") {
   process.exit(0);
 }
 
-// `memex user …` — manage partitions inside the current instance (cwd or $MEMEX_ROOT) by delegating
-// to that instance's own scripts/users.ts (the canonical engine; v3.3 multi-tenancy).
-if (cmd === "user") {
+// `memex user …` / `memex id` / `memex connect <app>` — operate on the current instance (cwd or
+// $MEMEX_ROOT) by delegating to its own engine scripts (the canonical, in-instance tooling).
+if (cmd === "user" || cmd === "id" || cmd === "connect" || cmd === "apps") {
   const root = process.env.MEMEX_ROOT ?? process.cwd();
-  const script = join(root, "scripts", "users.ts");
+  const script = join(root, "scripts", cmd === "user" ? "users.ts" : "mounts.ts");
   if (!existsSync(script)) {
     console.error(`✗ no memex here (${script} missing) — run inside an instance, or set MEMEX_ROOT`);
     process.exit(1);
   }
-  const r = Bun.spawnSync(["bun", script, ...process.argv.slice(3)], { stdout: "inherit", stderr: "inherit" });
+  const passthrough = cmd === "user" ? process.argv.slice(3) : [cmd, ...process.argv.slice(3)];
+  const r = Bun.spawnSync(["bun", script, ...passthrough], { stdout: "inherit", stderr: "inherit" });
   process.exit(r.exitCode ?? 0);
 }
 
@@ -61,6 +63,10 @@ if (existsSync(target) && readdirSync(target).filter((f) => f !== ".DS_Store").l
 }
 
 copyDir(TEMPLATE, target);
+// Stamp a unique instance identity (committed, non-secret) so apps can pin to THIS memex + plug in
+// additively. Generated per-instance (never shipped in the template — that'd give every memex the same id).
+const contract = (readFileSync(join(TEMPLATE, "STRUCTURE.md"), "utf8").match(/v(\d+\.\d+)/) ?? [, "3.3"])[1];
+writeFileSync(join(target, "memex.json"), JSON.stringify({ id: `mx_${randomUUID()}`, contract, createdAt: new Date().toISOString(), apps: {} }, null, 2) + "\n");
 console.log(`✓ memex scaffolded at ${target}`);
 console.log("  next:");
 console.log(`    cd ${target}`);

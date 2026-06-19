@@ -1,9 +1,24 @@
-# Structure contract (v3.3)
+# Structure contract (v3.4)
 
 The **single source of truth** for how this memex is laid out and how tools read it. Any assistant
 or tool **resolves the logical roots below** instead of hardcoding deep paths — so the structure can
 evolve without breaking what's built on it. memex is **local-first**: there's no "push an update," so
 this contract changes deliberately and is versioned (bump the version + log in `CHANGELOG.md`).
+
+## Instance identity & plug-in (v3.4)
+
+Each memex has a committed `memex.json` identity card: a stable `id` (`mx_…`, generated at
+`memex init`), the `contract` it was created against, and an **additive `apps` registry**. This is how
+multiple apps share one memex **without breaking each other**:
+- An app PLUGS IN — it never re-inits or clobbers. `memex connect <app> [role]` (or
+  `scripts/mounts.ts` `connectApp`) generates the `id` if missing and **merges** the app's own entry,
+  touching no other app's data; `memex init` refuses a non-empty dir. So Rotli can attach to a live
+  Breve memex purely additively.
+- An app PINS to `memexId()` (so a swapped/wrong memex is noticed) and calls `requireContract()`
+  (`CONTRACT_VERSION`) before relying on the structure — fail loud on a mismatch, not silent corruption.
+- Boundaries that keep apps from colliding: each app writes only its own surface (`conversations.ts`
+  ownership), reads shared policy/handles/model-rules read-only, and registers its own config as its
+  own file. **You never edit one app's files to make another work.**
 
 ## Logical roots (what tools resolve)
 

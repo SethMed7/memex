@@ -12,9 +12,10 @@
  *   media=false     — true ⇒ binaries allowed under it (the core text spine stays text-only).
  *   git=track|ignore — external ⇒ ignore (it syncs via its own backend, not the memex repo).
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
+import { randomUUID } from "node:crypto";
 
 const BRAIN = join(import.meta.dir, "..");
 /** The distribution root: shared scripts + contracts + clients/ + the users.json registry. Never moves. */
@@ -137,7 +138,7 @@ export function currentUser(): string | undefined {
 // The machine-readable contract version (mirrors STRUCTURE.md). A connected app calls requireContract()
 // at startup so it FAILS LOUDLY against a contract it wasn't built for, instead of silently corrupting
 // data (the local-first "no push an update" reality means apps and contracts drift).
-export const CONTRACT_VERSION = "3.3";
+export const CONTRACT_VERSION = "3.4";
 const verNum = (v: string) => v.split(".").map(Number).reduce((a, n, i) => a + n / Math.pow(1000, i), 0);
 /** Throw unless CONTRACT_VERSION is within [min, max] (inclusive, "major.minor" strings; max optional). */
 export function requireContract(min: string, max?: string): void {
@@ -145,6 +146,49 @@ export function requireContract(min: string, max?: string): void {
   if (v < verNum(min) || (max && v > verNum(max))) {
     throw new Error(`memex contract ${CONTRACT_VERSION} outside supported range ${min}${max ? `–${max}` : "+"} — upgrade the app or the memex before writing.`);
   }
+}
+
+// ── Instance identity + additive app plug-in ────────────────────────────────────────────────────
+// memex.json (committed, non-secret) is this instance's identity card: a stable `id`, the `contract`
+// it was created against, and an ADDITIVE `apps` registry. An app PLUGS IN — it never re-inits or
+// clobbers: connectApp() generates the id if missing and merges the app's own entry, touching no other
+// app's data. Apps PIN to memexId() so a swapped/wrong memex is noticed, and call requireContract()
+// before writing. This is how Rotli can attach to a live Breve memex purely additively (Config Rule:
+// proper boundaries — one app never breaks another).
+const MEMEX_JSON = () => process.env.MEMEX_INFO ?? join(REPO_ROOT, "memex.json");
+export type MemexInfo = { id: string; contract: string; createdAt: string; apps: Record<string, { role?: string; connectedAt: string }> };
+
+/** This instance's identity card, or null if not yet stamped (a pre-identity memex). */
+export function memexInfo(): MemexInfo | null {
+  try { const r = JSON.parse(readFileSync(MEMEX_JSON(), "utf8")); return r && typeof r.id === "string" ? r : null; }
+  catch { return null; }
+}
+/** The stable instance id (mx_…), or null if not stamped. An app pins to this. */
+export const memexId = (): string | null => memexInfo()?.id ?? null;
+/** Names of the apps currently plugged into this memex. */
+export const connectedApps = (): string[] => Object.keys(memexInfo()?.apps ?? {});
+
+/** Stamp the instance id if absent, returning the info. Pure file op; safe to call repeatedly. */
+export function ensureMemexInfo(nowIso: string): MemexInfo {
+  const existing = memexInfo();
+  if (existing) return existing;
+  return { id: `mx_${randomUUID()}`, contract: CONTRACT_VERSION, createdAt: nowIso, apps: {} };
+}
+
+/**
+ * Plug an app in — IDEMPOTENT + strictly ADDITIVE. Creates memex.json (+ a fresh id) if this memex
+ * predates identity; registers `app` WITHOUT touching any other app's entry or any data; never
+ * re-inits. Returns the memex id the app is now bound to. `now` is passed in (no Date in this module).
+ */
+export function connectApp(app: string, opts: { role?: string; now: string }): string {
+  const info = ensureMemexInfo(opts.now);
+  info.apps = info.apps ?? {};
+  if (!info.apps[app]) info.apps[app] = { ...(opts.role ? { role: opts.role } : {}), connectedAt: opts.now };
+  else if (opts.role) info.apps[app].role = opts.role;
+  const path = MEMEX_JSON(), tmp = `${path}.tmp`;
+  writeFileSync(tmp, JSON.stringify(info, null, 2) + "\n");
+  renameSync(tmp, path);
+  return info.id;
 }
 
 /** The canonical assets mount, resolved exactly like validate.ts (env → assetsPath → sibling default). */
@@ -193,8 +237,22 @@ export const mediaRoots = (): string[] => listMounts().filter((m) => m.media).ma
 export const externalRoots = (): string[] => listMounts().filter((m) => m.external).map((m) => m.path);
 
 if (import.meta.main) {
-  for (const m of listMounts()) {
-    const tags = [m.external && "external", m.media && "media", `git:${m.git}`].filter(Boolean).join(" ");
-    console.log(`${m.name}\t${m.path.replace(homedir(), "~")}\t[${tags}]`);
+  const cmd = process.argv[2];
+  if (cmd === "id") {
+    const info = memexInfo();
+    if (!info) { console.log("this memex has no identity yet — `connect <app>` (or `id --stamp`) stamps one"); if (process.argv[3] === "--stamp") connectApp("manual", { role: "stamp", now: new Date().toISOString() }); }
+    else console.log(`${info.id}\ncontract: ${info.contract} · created: ${info.createdAt}\napps: ${Object.entries(info.apps).map(([a, m]) => `${a}${m.role ? `(${m.role})` : ""}`).join(", ") || "(none)"}`);
+  } else if (cmd === "connect") {
+    const app = process.argv[3], role = process.argv[4];
+    if (!app) { console.error("usage: bun scripts/mounts.ts connect <app> [role]"); process.exit(1); }
+    const id = connectApp(app, { ...(role ? { role } : {}), now: new Date().toISOString() });
+    console.log(`✓ "${app}" plugged into ${id} (additive — other apps untouched)`);
+  } else if (cmd === "apps") {
+    console.log(connectedApps().join("\n") || "(no apps connected)");
+  } else {
+    for (const m of listMounts()) {
+      const tags = [m.external && "external", m.media && "media", `git:${m.git}`].filter(Boolean).join(" ");
+      console.log(`${m.name}\t${m.path.replace(homedir(), "~")}\t[${tags}]`);
+    }
   }
 }
