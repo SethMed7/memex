@@ -30,7 +30,9 @@ write-contract (`conversations.ts`). memex doesn't grow feature scripts.
 ## Speaking to the config (connected apps, e.g. Rotli's UI)
 
 The config files **are the API** — there's no separate endpoint. An app manages memex by reading and
-writing them per their schema + the Configuration Rule below, then running `scripts/validate.ts`:
+writing them per their schema + the Configuration Rule below, then running `scripts/validate.ts`.
+The frozen, contract-versioned subset an **external app** (separate repo) may depend on is listed in
+`STRUCTURE.md` → "For external apps (separate repos)"; those keys change only at a contract MAJOR bump.
 
 - **User instance wiring** → `memex.local.json` (gitignored): `assetsPath`, `mounts`. A Rotli "manage
   mounts" screen edits this file; resolve the result via `scripts/mounts.ts` (`listMounts`/`resolveMount`).

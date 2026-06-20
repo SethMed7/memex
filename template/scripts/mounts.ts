@@ -64,6 +64,10 @@ export function registry(): Registry | null {
  * The access MODE — the use-case knob a connected app honors. No registry ⇒ "local" (single user,
  * no auth/isolation). A registry with no explicit mode ⇒ "secure" (SAFE default: never silently
  * drop isolation/auth on an existing multi-tenant memex). Set it with `users.ts mode <m>`.
+ *
+ * MIRRORED in breve/scripts/config.ts:accessMode() — external apps that can't import this engine
+ * (separate repo, memex may be absent) reimplement this fail-closed rule and must keep it identical:
+ * no registry ⇒ local; explicit local|open ⇒ that; anything else (incl. malformed) ⇒ secure.
  */
 export function accessMode(): AccessMode {
   const reg = registry();

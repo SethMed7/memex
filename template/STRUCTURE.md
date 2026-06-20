@@ -163,3 +163,27 @@ itself with `scripts/learn.ts` (`mapFor` / `learn` / `heal`). For links/aliases 
 invariants. **Adding config?
 Follow the Configuration Rule in `CONFIG.md`** — and note: **the brain itself makes no LLM calls**; it
 only holds the configuration for how a model talks to it.
+
+## For external apps (separate repos)
+
+A tool author *imports* these engines. An **external app in its own repo** (Breve, Rotli, …) usually
+*cannot* — the memex is a sibling repo resolved by path at runtime and may be absent or a drifted copy,
+so coupling the app's boot to `import`ing this engine is forbidden (it would crash the app when the
+memex is missing). For those apps the stable cross-app contract is the **FILE FORMAT**, frozen here and
+versioned by the contract version (`memex.json.contract` / `CONTRACT_VERSION`). These names change ONLY
+with a contract **MAJOR** bump (the one thing an external app's startup handshake must gate on);
+everything else — function signatures, internal script names, the `organize` / `links` / `learn`
+internals — is **internal and may change at a minor bump**.
+
+- **`users.json`** — keys `primary`, `mode` (`local` | `open` | `secure`), `auth.stepUp`, and
+  `users[].{name, role, path, powers}`.
+- **`identities.local.json`** (optional, gitignored, PII) — shape `name → { phone, uuid, email }`.
+- **`memex.json`** — keys `{ id, contract, apps }`.
+- **Spine filenames** an app may path-join under a partition root: `inbox.md`, `MAP.md`, `history/`,
+  `chats/`, `clients/`.
+- **`scripts/users.ts` CLI verbs** — `add` | `list` | `remove` | `init-primary` | `mode`. An app that
+  shells out to the engine (`bun <base>/scripts/<name>.ts`) may also rely on `heal.ts`, `validate.ts`,
+  and `client.ts` (`contextPack`) existing under `scripts/` with that invocation form.
+
+(See `CONFIG.md` — "The config files ARE the API". An external app must NOT `import` these engine
+scripts; it reads/writes the files above, and pins the contract MAJOR.)

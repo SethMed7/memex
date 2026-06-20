@@ -23,11 +23,11 @@ import {
   findOrphans, findUnlinkedMentions, duplicateBasenames, displayTarget, loadFindabilityConfig,
   type NoteRecord,
 } from "./links.ts";
-import { REPO_ROOT, userRoot, currentUser, registry } from "./mounts.ts";
+import { REPO_ROOT, userRoot, currentUser, registry as usersRegistry } from "./mounts.ts";
 
 // Regenerate ONE partition's MAP.md: --user/$MEMEX_USER (default primary/root). --all loops every
 // registered partition. The model registry (findability config) is shared at the repo root.
-const _reg0 = registry();
+const _reg0 = usersRegistry();
 if (process.argv.includes("--all") && _reg0) {
   let bad = 0;
   for (const u of _reg0.users) {
@@ -81,9 +81,9 @@ for (const raw of prose(prevMap).split("\n")) {
 const summaryOf = (file: string): string => frontmatterSummary(file) || prev[basename(file, ".md")] || "—";
 
 // ── findability index (shared scripts/links.ts) — backlink trails + Orphans + Unlinked mentions ──────
-let registry: any = {};
-try { registry = JSON.parse(readFileSync(join(REPO_ROOT, "clients", "models.json"), "utf8")); } catch { /* defaults */ }
-const findCfg = loadFindabilityConfig(registry);
+let modelsRegistry: any = {};
+try { modelsRegistry = JSON.parse(readFileSync(join(REPO_ROOT, "clients", "models.json"), "utf8")); } catch { /* defaults */ }
+const findCfg = loadFindabilityConfig(modelsRegistry);
 
 // Walk ACTUAL note dirs (not the fixed section list) so the index spans every link target.
 const walkMd = (dir: string, out: string[] = []): string[] => {
