@@ -1,0 +1,18 @@
+{
+  "name": "breve",
+  "description": "Breve morning brief engine — message platform + Signal routing",
+  "mode": "secure",
+  "auth": { "stepUp": ["phone-code"] },
+  "primaryName": "you",
+  "tier": "full",
+  "skipScanQuiz": true,
+  "skipScanTier": true,
+  "recommendedModels": ["claude-sonnet", "gemini"],
+  "localModel": { "recommended": "qwen2.5:14b", "minTier": "standard" },
+  "apps": [{ "name": "breve", "role": "message-platform" }],
+  "postInit": [
+    "Edit ~/breve/config.local.json → set knowledgePath to this directory",
+    "Fill identities.local.json (gitignored) with phone/uuid for Signal auth — see the example",
+    "memex status — confirm the handshake (id · contract · mode · apps)"
+  ]
+}

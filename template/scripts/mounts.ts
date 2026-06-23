@@ -12,7 +12,7 @@
  *   media=false     — true ⇒ binaries allowed under it (the core text spine stays text-only).
  *   git=track|ignore — external ⇒ ignore (it syncs via its own backend, not the memex repo).
  */
-import { readFileSync, writeFileSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -253,6 +253,30 @@ if (import.meta.main) {
     console.log(`✓ "${app}" plugged into ${id} (additive — other apps untouched)`);
   } else if (cmd === "apps") {
     console.log(connectedApps().join("\n") || "(no apps connected)");
+  } else if (cmd === "status") {
+    // The app-onboarding handshake: what every connected app (Breve, Rotli, …) gates on at startup —
+    // a stable id to pin, a contract to range-check, the access mode it must honor, the partitions it
+    // may reach, and whether self-heal can rebuild a partition. Read-only; no LLM calls (Rule #9).
+    const info = memexInfo();
+    if (!info) {
+      console.log("memex: no identity yet — memex.json absent/unstamped.");
+      console.log("  → `memex connect <app> [role]` stamps an id and plugs an app in (additive).");
+      process.exit(0);
+    }
+    const reg = registry();
+    const skeletonOk = existsSync(join(import.meta.dir, "user-skeleton"));
+    const drift = info.contract !== CONTRACT_VERSION;
+    console.log(`memex ${info.id}`);
+    console.log(`  contract : ${info.contract}${drift ? `  ⚠ engine here is ${CONTRACT_VERSION} — an app pinning a different contract may refuse to write` : `  (engine matches)`}`);
+    console.log(`  mode     : ${accessMode()}${reg ? "" : "  (single-tenant — no users.json)"}`);
+    if (reg) {
+      console.log(`  primary  : ${reg.primary}`);
+      console.log(`  users    : ${reg.users.map((u) => `${u.name}(${u.role}${u.name === reg.primary ? ",primary" : ""}) → ${u.path || "(repo root)"}`).join(" · ")}`);
+    }
+    const apps = Object.entries(info.apps ?? {});
+    console.log(`  apps     : ${apps.map(([a, m]) => `${a}${m.role ? `(${m.role})` : ""}`).join(" · ") || "(none — `memex connect <app> [role]`)"}`);
+    console.log(`  skeleton : ${skeletonOk ? "present" : "⚠ missing scripts/user-skeleton — heal can't rebuild a partition spine"}`);
+    console.log(`  selfHeal : ${info.selfHeal === false ? "off" : "on"}`);
   } else {
     for (const m of listMounts()) {
       const tags = [m.external && "external", m.media && "media", `git:${m.git}`].filter(Boolean).join(" ");

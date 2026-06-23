@@ -1,0 +1,17 @@
+{
+  "name": "rotli",
+  "description": "Rotli local-first notes app — menu-bar, chats, docs",
+  "mode": "local",
+  "primaryName": "you",
+  "tier": "standard",
+  "skipScanQuiz": true,
+  "skipScanTier": true,
+  "recommendedModels": ["claude-haiku", "gemma2:9b"],
+  "localModel": { "recommended": "gemma2:9b", "minTier": "compact" },
+  "apps": [{ "name": "rotli", "role": "chat-system" }],
+  "postInit": [
+    "Open Rotli → Settings → set the memex path to this directory",
+    "memex status — confirm the handshake (id · contract · mode · apps)",
+    "Joining an EXISTING memex instead (one Breve already uses)? Don't init — run `memex connect rotli chat-system` inside it (or `memex connect rotli chat-system --root <dir>`)."
+  ]
+}

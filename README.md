@@ -46,7 +46,28 @@ What makes it more than a folder of notes:
 bunx github:SethMed7/memex init mybrain     # scaffold a memex (zero dependencies)
 cd mybrain
 bun scripts/validate.ts                      # confirm the structure is sound
+
+# Get a local AI recommendation for your hardware
+memex scan mybrain/
+
+# Init from a product template (greenfield — skips the quiz, pre-configures the mode + apps registry)
+memex init breve-brain --template breve
+memex init rotli-notes --template rotli
+
+# One brain, many apps: a SECOND app plugs into an EXISTING memex (additive — never re-inits)
+cd breve-brain
+memex connect rotli chat-system              # Rotli now shares Breve's brain
+memex status                                  # the handshake: id · contract · mode · apps · partitions
+
+# Merge two separate memexes into one
+memex join path/to/memex-a path/to/memex-b merged-brain/
 ```
+
+> **One memex, many apps.** A template inits a *new* brain; to add another app to a brain that already
+> exists you **`connect`**, not init (`memex init` refuses a non-empty dir). The `apps` registry in
+> `memex.json` is additive, so Breve and Rotli can share one memex without breaking each other — and the
+> joining app honors whatever `mode` the brain is already in. `memex status` shows the handshake an app
+> gates on at startup. (Run `connect`/`status`/`heal` inside the instance, or pass `--root <dir>`.)
 
 Then fill `self/00-identity.md`, point your assistant at the folder, and go. Your data is **gitignored
 by default**, so the folder is safe to share as a structure.

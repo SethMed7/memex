@@ -4,7 +4,7 @@
   "description": "A local-first, configurable knowledge + memory structure any AI assistant can plug into. No cloud, no lock-in — plain markdown you own.",
   "type": "module",
   "bin": { "memex": "bin/memex.ts" },
-  "files": ["bin", "template", "README.md", "LICENSE"],
+  "files": ["bin", "template", "templates", "README.md", "LICENSE"],
   "license": "MIT",
   "keywords": [
     "knowledge-base", "memory", "second-brain", "personal-ai", "llm", "agent",
