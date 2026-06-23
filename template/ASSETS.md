@@ -24,6 +24,13 @@ memex** (e.g. `./assets`). So `storage:wiki/projects/my-project/diagram.png` is 
 **Mirror the note's location** — a binary attached to `wiki/projects/my-project.md` belongs under
 `storage:wiki/projects/my-project/…`, so things stay findable and orphans are detectable.
 
+> **Layout decision (locked).** The asset sub-path **mirrors the note's location** — this is the committed
+> convention, chosen over a type/year/month media-library layout (`storage:images/2026/06/…`). The tradeoff
+> is deliberate: mirroring keeps an asset path self-describing (you can see which note owns it) at the cost
+> of coupling asset paths to wiki folder names — so renaming a wiki folder means rewriting its `storage:`
+> refs. Lock this **before** attaching binaries: `storage:` paths live inside note bodies, so the scheme is
+> expensive to change once assets exist.
+
 ## Rules
 
 - Binaries live **under the configured assets root**, wherever you point it. Outside that root the tree

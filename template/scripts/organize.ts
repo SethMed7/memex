@@ -141,11 +141,10 @@ function section(title: string, dir: string) {
 }
 
 section("self/ — the whole person", join(BRAIN, "self"));
-section("wiki/projects/", join(BRAIN, "wiki", "projects"));
-section("wiki/research/", join(BRAIN, "wiki", "research"));
-section("wiki/theology/", join(BRAIN, "wiki", "theology"));
-section("wiki/reference/", join(BRAIN, "wiki", "reference"));
-section("wiki/people/", join(BRAIN, "wiki", "people"));
+// Wiki categories are DERIVED from the actual subdirs of wiki/ (subDirs already excludes _templates),
+// never a hardcoded list — keeps the shared engine instance-agnostic (no one instance's categories, e.g.
+// a personal `theology/`, leak into the template) and a new category shows up in MAP with no code edit.
+for (const cat of subDirs(join(BRAIN, "wiki"))) section(`wiki/${cat}/`, join(BRAIN, "wiki", cat));
 
 // chats — named conversations
 out.push("", "## chats/ — named conversations");

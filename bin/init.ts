@@ -22,6 +22,7 @@ import {
 import { join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import * as readline from "node:readline";
+import { CONTRACT_VERSION } from "../template/scripts/mounts.ts";
 
 const PKG_ROOT = join(import.meta.dir, "..");
 const TEMPLATE = join(PKG_ROOT, "template");
@@ -186,9 +187,9 @@ export async function runInit(
   // Copy template skeleton
   copyDir(TEMPLATE, dir);
 
-  // Stamp memex.json
-  const contractMatch = readFileSync(join(TEMPLATE, "STRUCTURE.md"), "utf8").match(/v(\d+\.\d+)/);
-  const contract = contractMatch ? contractMatch[1] : "3.4";
+  // Stamp memex.json — the contract this instance is created against comes from the ONE source of truth
+  // (CONTRACT_VERSION in the engine), not a re-derived literal, so a version bump can't silently drift here.
+  const contract = CONTRACT_VERSION;
 
   // Sanitize apps from template: accept "name" OR {name, role}; slug-shaped names only, cap at MAX_APPS.
   // Stamping the app (with its role) here IS the registration — no separate `memex connect` is needed

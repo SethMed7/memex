@@ -101,7 +101,8 @@ storage-ref escape (simple), or invest in a rich block format (an editor/format 
 linkable, indexed record. No raw/distilled split (resolved above) — templates + metadata are what give a
 note its structure; `inbox.md` is the only pre-structure zone.
 
-**3. storage library.** Organize by **type → year/month** (`images/2026/06/…`), a real media library;
+**3. storage library.** *(NOT ADOPTED — DECISION C resolved 2026-06-23 to keep the v3.4 mirror-the-note-path
+rule; retained here for the record.)* Organize by **type → year/month** (`images/2026/06/…`), a real media library;
 records connect to files via relationships, not the old "mirror the note's path" rule (retire it).
 `DECISION C`: the type taxonomy + whether dates are by created or by added.
 
@@ -155,6 +156,8 @@ through the data responsibly" — now spanning every record type.
 ## DECISIONS to redline
 - **A** *(naming only)* — keep the notes corpus as `wiki/`, or rename → `notes/`? (Identical model.)
 - **B** — docs: md-default + storage-ref escape, or a rich block format?
-- **C** — storage taxonomy + date basis (created vs added)?
+- **C** — storage taxonomy + date basis (created vs added)? **RESOLVED 2026-06-23: keep the v3.4
+  mirror-the-note-path convention (ASSETS.md); the type/year/month media-library layout (proposal #3) is NOT
+  adopted.** Storage was empty when locked, so zero migration; revisit only if asset volume outgrows mirroring.
 - **D** — link log: `.jsonl` vs `.md`; harvest all records or opt-in?
 - **E** — anything here that's the *app's* job, not the structure's? (boundary check)

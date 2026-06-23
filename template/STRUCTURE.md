@@ -179,8 +179,10 @@ internals — is **internal and may change at a minor bump**.
   `users[].{name, role, path, powers}`.
 - **`identities.local.json`** (optional, gitignored, PII) — shape `name → { phone, uuid, email }`.
 - **`memex.json`** — keys `{ id, contract, apps }`.
-- **Spine filenames** an app may path-join under a partition root: `inbox.md`, `MAP.md`, `history/`,
-  `chats/`, `clients/`.
+- **Spine directory + file names** (frozen — MAJOR-only) an app may path-join under a partition root: the
+  dirs `self/`, `wiki/`, `history/`, `chats/` and the files `inbox.md`, `MAP.md`; plus `clients/` at the
+  repo root. Tools resolve these via `scripts/mounts.ts` (`selfPath`/`wikiPath`/…); the *names* are a stable
+  part of the contract, so a rename like `wiki/`→`notes/` is a MAJOR-bump event, never a silent minor drift.
 - **`scripts/users.ts` CLI verbs** — `add` | `list` | `remove` | `init-primary` | `mode`. An app that
   shells out to the engine (`bun <base>/scripts/<name>.ts`) may also rely on `heal.ts`, `validate.ts`,
   and `client.ts` (`contextPack`) existing under `scripts/` with that invocation form.

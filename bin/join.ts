@@ -22,6 +22,7 @@ import {
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import * as readline from "node:readline";
+import { CONTRACT_VERSION } from "../template/scripts/mounts.ts";
 
 const PKG_ROOT = join(import.meta.dir, "..");
 const TEMPLATE = join(PKG_ROOT, "template");
@@ -346,8 +347,8 @@ export async function runJoin(
   }
 
   // Pick the higher contract version using numeric comparison (handles 3.10 > 3.9 correctly)
-  const contract1: string = m1.info?.contract ?? "3.4";
-  const contract2: string = m2.info?.contract ?? "3.4";
+  const contract1: string = m1.info?.contract ?? CONTRACT_VERSION;
+  const contract2: string = m2.info?.contract ?? CONTRACT_VERSION;
   const contract = compareVersions(contract1, contract2) >= 0 ? contract1 : contract2;
 
   // --- Scaffold output ---
