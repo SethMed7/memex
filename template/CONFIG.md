@@ -10,7 +10,8 @@ memex is a **structure** plus a thin **configuration** layer — nothing more. O
 holds exactly **three config concerns**, each with a deterministic engine (no LLM calls — Rule #9):
 
 1. **How each model uses the structure** — `clients/models.json` (+ `scripts/client.ts`): per-model
-   context-pack sizing/shape. Add a model = one entry.
+   context-pack sizing/shape; and `clients/capabilities.json`: what each model *can't* do natively
+   (pdf/image/web/…) — the memex only declares, the connected app fulfills. Add a model = one entry.
 2. **Your settings** — `memex.local.json` (+ `scripts/mounts.ts`): `assetsPath`, `mounts`, instance wiring.
 3. **Self-mapping + improvement (model-aware)** — `MAP.md` (+ `scripts/organize.ts` / `links.ts`) and
    `clients/learning/<model>.md` (+ `scripts/learn.ts`). This is **core**: a connected app *inherits*
@@ -58,6 +59,7 @@ row below, validate if load-bearing, commit. That's the whole ritual.
 | Concern | Where | What you control |
 |---|---|---|
 | **Per-model rules** | `clients/models.json` | context window, brain budget, tier, `agentic`, structured-output per model. Add a model = one JSON entry. Unknown → safe default. |
+| **Model capabilities** | `clients/capabilities.json` | what each model CAN'T do natively (pdf/image/web/…); the memex only declares, the connected app fulfills (or alerts if unconfigured). Add a model = one entry; unknown → lacks-everything safe default. |
 | **External resources (fetch-from)** | `clients/resources.json` | curated external sources a connected app may fetch + the per-source guards it fetches under (host, https-only, no-private-IP, same-host-redirect, timeout/byte/char caps, `cadence`, processing `tier`, `favorite`, `trust`). The memex only HOLDS the list + guards; the connected app does the fetching (Rule #9). Add a source = one entry; omitted field → most-constrained `default`. Favoriting changes ordering only, never trust/tier/reach. |
 | **Self-improving layer** | `clients/models.json` → `learning` (+ `clients/learning/<model>.md`) | per-model playbooks: `enabled`, `dir`, `maxKb` (how much rides along in a pack). Off → no playbooks. Grown/healed by the model via `scripts/learn.ts`; folded into packs by `client.ts`. |
 | **Findability** | `clients/models.json` → `findability` (+ `scripts/links.ts` defaults) | bidirectional backlinks rendered into `MAP.md` (`organize.ts`), orphan-note + unlinked-mention warnings (`validate.ts`), `aliases:` participation, grace days / exempt files+tags, mention min-length + stopwords + scan scope. Backlinks are GENERATED (not configured); the `aliases:` key is fixed. Off → pre-v3 behavior. |

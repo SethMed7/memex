@@ -1,0 +1,20 @@
+{
+  "_notes": "CAPABILITY MATRIX — what each model CAN'T do natively (pdf/image/web/youtube/file_read/email_send/structured_output). The brain only DECLARES capability; it never fulfills (Rule #9). A connected app reads this, and when the active model LACKS a needed capability it routes to its own integration (e.g. PDF → headless Chrome) — or alerts if that fulfillment is unconfigured. Matching mirrors models.json: by substring against the lowercased model id; first match wins; unknown → `default` (lacks everything risky, safe). `has`/`lacks` reference capability keys defined in `capabilities`.",
+  "capabilities": {
+    "pdf": "Generate a PDF artifact (a brief, a deck) directly.",
+    "image": "Generate or edit raster images.",
+    "web": "Fetch live web pages / browse during the turn (vs. training-only).",
+    "youtube": "Ingest a YouTube URL (transcript/video) natively.",
+    "file_read": "Read local files and follow [[links]] itself (agentic) vs. needing a pre-assembled pack.",
+    "email_send": "Send email directly (no model does this natively — always an app integration).",
+    "structured_output": "Emit constrained/valid JSON on demand."
+  },
+  "models": [
+    { "match": ["claude", "opus", "sonnet", "haiku"], "label": "Claude", "has": ["web", "file_read", "structured_output"], "lacks": ["pdf", "image", "youtube", "email_send"], "notes": "Agentic + JSON-strong with live web (tool use), but cannot natively render a PDF or generate images — the connected app fulfills those." },
+    { "match": ["gemini"], "label": "Gemini", "has": ["web", "file_read", "image", "youtube", "structured_output"], "lacks": ["pdf", "email_send"], "notes": "Native image + YouTube + web. Cannot render a PDF — the connected app fulfills." },
+    { "match": ["gpt", "codex", "chatgpt", "o3", "o4"], "label": "ChatGPT / Codex", "has": ["file_read", "image", "structured_output"], "lacks": ["web", "pdf", "youtube", "email_send"], "notes": "Agentic + image-capable, but web is OFF by default in the CLI — treat as lacking web unless the app enables a fetch tool." },
+    { "match": ["gemma", "nemotron", "qwen", "glm", "llama", "mistral", "deepseek", "phi", "local", "ollama"], "label": "Local (open-weight)", "has": ["structured_output"], "lacks": ["pdf", "image", "web", "file_read", "youtube", "email_send"], "notes": "Raw local model over an API: JSON via constrained decoding only. Cannot read files, browse, or make media — the connected app must pre-assemble and fulfill every capability." },
+    { "match": ["gamma"], "label": "Gamma", "has": ["image", "structured_output"], "lacks": ["pdf", "web", "youtube", "file_read", "email_send"], "notes": "Example: builds decks/pages but cannot generate a PDF artifact — the connected app fulfills PDF (headless Chrome)." }
+  ],
+  "default": { "label": "Unknown model", "has": [], "lacks": ["pdf", "image", "web", "youtube", "file_read", "email_send", "structured_output"], "notes": "Unrecognized — assume it can do nothing risky natively. The connected app must fulfill or refuse every capability. Safe for any new model." }
+}
