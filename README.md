@@ -2,6 +2,9 @@
 
 ![memex — your knowledge, structured](assets/banner.png)
 
+**A local-first, text-only memory your AI assistants can actually read.**
+Plain markdown you own — no cloud, no database, no lock-in.
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-6366f1)](LICENSE)
 [![Local-first](https://img.shields.io/badge/local--first-text%20only-0c0e1a)](#principles)
 [![Runtime](https://img.shields.io/badge/Bun-zero%20deps-0c0e1a)](https://bun.sh)
@@ -9,36 +12,37 @@
 
 </div>
 
-## The name
-
-In 1945, Vannevar Bush imagined the **memex** — a "memory extender": a desk where a person keeps all
-their books, records, and notes and links them by *associative trails*, so anything can be found later
-by following connections. It's the idea every "second brain" descends from. This is that idea, rebuilt
-for the age of AI assistants: **a personal memory your models can actually read.**
-
 ## What it is
 
-> **memex is a local-first, text-only knowledge + memory structure that any AI assistant can plug into.**
+memex is a **structure for your knowledge** — a folder of plain markdown files on your disk, plus
+the rules for how an AI assistant reads and writes them. It isn't an app, and it isn't tied to any
+one model. Point your assistant at the folder and it has a memory that **persists between sessions,
+stays on your machine, and is yours to keep.**
 
-Plain markdown on your disk — no cloud, no database, no lock-in. memex isn't an app and isn't tied to
-any one model; it's the **structure** and the **rules** for how a model talks to your knowledge. Bring
-your own assistant.
+It fixes two things at once:
 
-What makes it more than a folder of notes:
+- **Assistants forget.** Every new chat starts from zero. memex gives a model a durable, structured
+  memory it reads at the start of every session — and writes back to as you talk.
+- **Your knowledge is trapped.** Notes scattered across apps and clouds. memex is plain files you
+  own, in a format with no migration path — because there's nothing to migrate *out* of.
 
-- **A model-readable index.** Every note carries a one-line summary; `MAP.md` is the always-loaded
-  spine an assistant reads first to decide what to open — so a 1M-context model and an 8k local model
-  each get a right-sized view.
-- **A conversation record.** Two surfaces — a by-day stream and named, attachable chats — let a message
-  platform and a chat system both write history without bleeding into each other.
+**Bring your own assistant.** Claude, a local model, an agent you wrote — memex is the part that
+stays put while models come and go.
+
+## Why it's more than a folder of notes
+
+- **A model-readable index.** Every note carries a one-line `summary:`; `MAP.md` is an always-loaded
+  spine the assistant reads *first* to decide what to open — so a 1M-context model and an 8k local
+  model each get a right-sized view instead of dumping the whole brain into context.
+- **A conversation record.** Two surfaces — a by-day stream (`history/`) and named, attachable chats
+  (`chats/`) — let a message platform and a chat app both write history without bleeding into each other.
 - **A configuration layer.** Every rule, policy, and permission is a knob you own (`CONFIG.md`), and a
-  per-model client layer (`clients/models.json`) adapts the whole thing to whatever model is reading it.
+  per-model client layer adapts the whole thing to whatever model is reading it.
 - **A self-improving layer.** Each model keeps a playbook that's folded back into its context every
-  session — so it gets its map *plus what it has already learned*, and heals drift it finds as it works.
-- **Two-way trails.** Bush's idea was *associative trails* you could walk in either direction — so here
-  `[[links]]` run both ways. Every note shows what it links *to* and what links *back*, aliases let a note
-  be found under more than one name, and the validator surfaces orphans and unlinked mentions — the
-  knowledge you wrote but can no longer reach.
+  session — so it gets its map *plus what it has already learned*, and heals drift as it works.
+- **Two-way trails.** `[[links]]` run both ways: every note shows what it links *to* and what links
+  *back*, `aliases:` let a note be found under more than one name, and the validator surfaces orphans —
+  the knowledge you wrote but can no longer reach.
 
 ## Quickstart
 
@@ -47,10 +51,9 @@ bunx github:SethMed7/memex init mybrain     # scaffold a memex (zero dependencie
 cd mybrain
 bun scripts/validate.ts                      # confirm the structure is sound
 
-# Get a local AI recommendation for your hardware
-memex scan mybrain/
+memex scan mybrain/                          # get a local-AI recommendation for your hardware
 
-# Init from a product template (greenfield — skips the quiz, pre-configures the mode + apps registry)
+# Start from a product template (pre-configures the mode + apps registry)
 memex init breve-brain --template breve
 memex init rotli-notes --template rotli
 
@@ -59,24 +62,20 @@ cd breve-brain
 memex connect rotli chat-system              # Rotli now shares Breve's brain
 memex status                                  # the handshake: id · contract · mode · apps · partitions
 
-# Merge two separate memexes into one
-memex join path/to/memex-a path/to/memex-b merged-brain/
+memex join path/to/memex-a path/to/memex-b merged-brain/   # merge two memexes into one
 ```
+
+Then fill in `self/00-identity.md`, point your assistant at the folder, and go. Your *data* is
+**gitignored by default**, so the folder is safe to share as a structure.
 
 > **One memex, many apps.** A template inits a *new* brain; to add another app to a brain that already
 > exists you **`connect`**, not init (`memex init` refuses a non-empty dir). The `apps` registry in
-> `memex.json` is additive, so Breve and Rotli can share one memex without breaking each other — and the
-> joining app honors whatever `mode` the brain is already in. `memex status` shows the handshake an app
-> gates on at startup. (Run `connect`/`status`/`heal` inside the instance, or pass `--root <dir>`.)
-
-Then fill `self/00-identity.md`, point your assistant at the folder, and go. Your data is **gitignored
-by default**, so the folder is safe to share as a structure.
-
----
+> `memex.json` is additive, so Breve and Rotli can share one memex without breaking each other.
+> `memex status` shows the handshake an app gates on at startup.
 
 ## The structure
 
-A memex is just a folder of plain files. Here's the whole thing — then what each part is for.
+A memex is just a folder of plain files. Here's the whole thing:
 
 ```
 mybrain/
@@ -96,82 +95,53 @@ mybrain/
   scripts/                                    deterministic tooling — no LLM calls, no deps
 ```
 
-### The contracts
-
-Three files define how everything works, so tools never have to guess:
+**The contracts** — three files define how everything works, so tools never guess:
 
 - **`STRUCTURE.md`** — the single source of truth for the layout. Tools resolve *logical roots*
-  (`selfPath`, `wikiPath`, `learningPath`, …) from it instead of hardcoding deep paths, so the structure
-  can evolve without breaking what's built on it. It's versioned.
+  (`selfPath`, `wikiPath`, …) from it instead of hardcoding paths, so the structure can evolve
+  without breaking what's built on it. It's versioned.
 - **`CONFIG.md`** — the control panel. Every rule, policy, and permission is a knob, governed by the
   **Configuration Rule** (knob-not-constant · safe defaults · secrets never in config · index every knob).
 - **`ASSETS.md`** — the `storage:` convention that keeps the memex strictly text. Binaries live in a
   separate asset store and are referenced by link, never committed here.
 
-### Your knowledge — `self/` and `wiki/`
+**Your knowledge** — `self/` is the slow-changing layer (identity, values, relationships, timeline),
+prose-first but indexed; `wiki/` is focused `[[linked]]` notes (`projects/ · research/ · reference/ ·
+people/`), each opening with frontmatter (`summary · tags · aliases · updated`) and closing with
+`## Related` links.
 
-- **`self/`** is the slow-changing layer about the subject — identity, values, relationships, timeline.
-  Prose-first, but each file carries a one-line summary so it can be indexed.
-- **`wiki/`** is focused, `[[linked]]` notes grouped into `projects/ · research/ · reference/ · people/`.
-  Every note opens with frontmatter (`summary` · `tags` · `aliases` · `updated`) and closes with
-  `## Related` links. `aliases:` lets a note be linked and found under more than one name — the project's
-  codename as well as its full title — which also keeps duplicates from quietly piling up.
+**The conversation record** — `history/` is a continuous by-day stream; `chats/` are discrete, titled
+conversations, each with a stable `id` and an optional `attachedTo: [[note]]` so any object can carry a
+chat. Each tool **writes only its own surface** but **reads across both** — enforced by code, not docs.
 
-### The conversation record — `history/` and `chats/`
+**The model layers** — `MAP.md` is the always-loaded spine (every note + its summary + two-way
+backlinks), regenerated deterministically. `clients/models.json` gives each model a window, a `tier`,
+and an `agentic` flag; an unknown model falls to the most-constrained safe default.
+`clients/learning/<model>.md` is the per-model self-improving playbook.
 
-Two surfaces, so a *message platform* and a *chat system* can both write without stepping on each other:
-
-- **`history/`** — a continuous stream bucketed by day (`history/<YYYY>/<date>.md`).
-- **`chats/`** — discrete, titled conversations, each with a stable `id` and an optional
-  `attachedTo: [[note]]` so any object can carry a chat.
-
-Each tool **writes only its own surface** but **reads across both** plus the shared notes — enforced by
-`scripts/conversations.ts`, not just documented.
-
-### The model layers — `MAP.md` and `clients/`
-
-This is what makes the memex *adapt to whoever is reading it*:
-
-- **`MAP.md`** — the always-loaded spine: every note with its one-line summary, so a model can decide
-  what to open without reading everything. Regenerated deterministically from the notes — including the
-  **backlinks** that make every `[[link]]` two-way, so a model arriving at a note sees not just where it
-  points but everything that points *back* at it.
-- **`clients/models.json`** — per-model rules. Each model gets a context window, a `tier`, and an
-  `agentic` flag; from those, the client layer sizes a pack. Unknown model → the most-constrained safe
-  default. Adding a model is one JSON entry.
-- **`clients/learning/<model>.md`** — the **self-improving layer**: one playbook per model, folded back
-  into that model's context pack every session (see below).
-
-### The tooling — `scripts/`
-
-Deterministic and dependency-free — they read and write files, and **never call an LLM**:
+**The tooling** — `scripts/` read and write files and **never call an LLM**:
 
 | Script | What it does |
 |---|---|
-| `validate.ts` | the invariants gate — text-only, links resolve, no secrets, no LLM calls, plus orphans + unlinked mentions |
+| `validate.ts` | the invariants gate — text-only, links resolve, no secrets, no LLM calls, orphans + unlinked mentions |
 | `organize.ts` | rebuild `MAP.md` from each note's `summary:` |
-| `links.ts` | the findability cluster — resolve `[[links]]` + `aliases:`, compute backlinks, flag orphans and unlinked mentions |
+| `links.ts` | resolve `[[links]]` + `aliases:`, compute backlinks, flag orphans and unlinked mentions |
 | `conversations.ts` | record + read conversations across both surfaces (`appendDaily` · `writeChat` · `capture`) |
 | `client.ts` | assemble a context pack sized to a given model (`contextPack`) |
 | `learn.ts` | a model's self-improving layer: `mapFor` · `learn` · `heal` |
 
----
-
 ## How a model plugs in — and improves itself
 
-A tool resolves the **logical roots** from `STRUCTURE.md` (never hardcodes paths), records conversations
-via `scripts/conversations.ts`, and asks `scripts/client.ts` for a context pack sized to its model. A
-tool can even **build a memex for a user** by running `memex init` with their permission — so they never
-set anything up.
-
-The **self-improving layer** then closes a loop, all driven by the model that plugs in (the memex itself
-makes no LLM calls — it only stores and re-serves):
+A tool resolves the **logical roots** from `STRUCTURE.md`, records conversations via
+`scripts/conversations.ts`, and asks `scripts/client.ts` for a context pack sized to its model. A tool
+can even **build a memex for a user** by running `memex init` with their permission — so they never set
+anything up. The memex itself makes no LLM calls; it only stores and re-serves. The model closes the loop:
 
 1. **Map** — `client.ts` hands the model the spine (`MAP.md` + `self/`) *plus its own playbook*.
-2. **Improve** — as it finds useful structure, it records a heuristic:
+2. **Improve** — when it finds useful structure, it records a heuristic:
    `bun scripts/learn.ts add <model> "for payments, read projects/gateway first" --heuristic`
-3. **Heal** — `bun scripts/learn.ts heal <model>` lists mechanical drift it should fix (notes missing a
-   `summary:`, dangling `[[links]]`, notes not yet in `MAP.md`). It fixes them and logs the correction.
+3. **Heal** — `bun scripts/learn.ts heal <model>` lists mechanical drift (missing `summary:`, dangling
+   `[[links]]`, notes not yet in `MAP.md`); it fixes them and logs the correction.
 4. **Optimize** — next session those learnings are back in its pack, so navigation gets sharper over time.
 
 Each model family gets its **own** playbook, so a 1M-context agent and a tiny local model accumulate
@@ -179,23 +149,25 @@ separate, right-sized knowledge of the same memex.
 
 ## Principles
 
-- **Text-only, yours.** Knowledge is markdown on your disk. Binaries live in a separate asset store,
-  referenced with `storage:` links (`ASSETS.md`). No proprietary format to migrate out of.
+- **Text-only, yours.** Markdown on your disk; binaries live in a separate asset store via `storage:`
+  links. No proprietary format to migrate out of.
 - **Model-aware.** The client layer sizes a context pack to each model — agentic models get a lean spine
-  and roam; small local models get a pre-assembled pack trimmed to their window; an unknown model falls
-  to the safest, smallest default.
+  and roam; small models get a pre-assembled pack trimmed to their window.
 - **Self-improving, not self-modifying.** Models accumulate playbooks and heal drift, but the *structure*
   is a stable contract — learnings are additive and per-model, never a rewrite of the rules.
-- **Trails run both ways.** A link you can only walk forward is half a memory. `[[links]]` resolve to
-  backlinks, `aliases:` give a note more than one true name, and the validator names the orphans and
-  unlinked mentions — so what you wrote stays reachable instead of becoming write-only.
-- **Config-driven.** Every rule/policy/permission is a knob, governed by the Configuration Rule in
-  `CONFIG.md`.
+- **Trails run both ways.** A link you can only walk forward is half a memory — so `[[links]]` resolve to
+  backlinks and the validator names what's become unreachable.
 - **The memex makes no LLM calls.** It holds only the configuration for *how* a model talks to it; the
-  reasoning, drafting, and distilling are done by whoever plugs in. `scripts/` are deterministic, and the
-  validator flags any model call — or committed secret — that sneaks in.
-- **Local-first & versioned.** A git repo of plain files. No "push an update" — the structure is a
-  versioned contract that won't break what's built on it.
+  reasoning is done by whoever plugs in. `validate.ts` flags any model call — or committed secret — that sneaks in.
+- **Local-first & versioned.** A git repo of plain files. The structure is a versioned contract that
+  won't break what's built on it.
+
+## The name
+
+In 1945, Vannevar Bush imagined the **memex** — a "memory extender": a desk where you keep all your
+books, records, and notes and link them by *associative trails*, so anything can be found later by
+following connections. It's the idea every "second brain" descends from. This is that idea, rebuilt for
+the age of AI assistants: **a personal memory your models can actually read.**
 
 ## Security
 
